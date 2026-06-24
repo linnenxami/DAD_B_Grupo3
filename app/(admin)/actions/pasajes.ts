@@ -61,7 +61,7 @@ export async function obtenerAsientosPorViaje(viajeId: string | number) {
       orderBy: { numero_asiento: "asc" },
       include: {
         pasaje: {
-          include: { usuario: true }
+          include: { cliente: true }
         }
       }
     });
@@ -78,7 +78,7 @@ export async function buscarPasajeroPorDni(dni: string) {
   if (!dni || dni.length < 5) return { success: false };
 
   try {
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.cliente.findUnique({
       where: { dni: dni }
     });
 
@@ -119,7 +119,7 @@ export async function venderPasaje(data: {
 
       // b) Buscar el usuario por DNI si existe, pero ya no forzamos creación de cuenta fantasma
       let usuarioId: bigint | null = null;
-      const usuario = await tx.usuario.findUnique({
+      const usuario = await tx.cliente.findUnique({
         where: { dni: data.pasajero.dni }
       });
 
@@ -135,7 +135,7 @@ export async function venderPasaje(data: {
           apellidos: data.pasajero.apellidos.toUpperCase(),
           dni: data.pasajero.dni,
           telefono: data.pasajero.telefono || null,
-          usuario_id: usuarioId, // Puede ser null si es una venta rápida a alguien que no está registrado
+          usuario_id: usuarioId as any, // Puede ser null si es una venta rápida a alguien que no está registrado
           precio: data.precio,
           codigo_qr: `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
         }

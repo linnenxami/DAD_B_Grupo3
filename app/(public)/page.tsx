@@ -1,14 +1,15 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import AdsCarousel from "@/components/AdsCarousel";
 import ServicesList from "@/components/ServicesList";
+import HomeBookingSearch from "@/components/HomeBookingSearch";
 import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col flex-1 bg-gray-50">
       {/* SECTION 1: BANNER PRINCIPAL Y SALUDO */}
       <section className="relative w-full h-[300px] sm:h-[400px] lg:h-[450px]">
         {/* Background Image */}
@@ -39,8 +40,11 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* BUSCADOR DE PASAJES (Superpuesto en el banner) */}
+      <HomeBookingSearch />
+
       {/* SECTION 2: SPLIT LAYOUT (CARRUSEL + TARJETAS DE SERVICIOS) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full flex-1">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
 
           {/* COLUMNA IZQUIERDA: Carrusel Vertical y Redes Sociales */}

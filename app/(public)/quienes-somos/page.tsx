@@ -51,7 +51,7 @@ export default function QuienesSomos() {
           <div className="h-1.5 w-20 bg-[#f07639] rounded-full mt-4 mx-auto"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Sucursal Chiclayo */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
             <div className="w-full h-48 overflow-hidden">
@@ -91,6 +91,20 @@ export default function QuienesSomos() {
             </div>
             <div className="p-6 text-center bg-white relative z-10">
               <h3 className="text-xl font-bold text-gray-900">Cajamarca</h3>
+            </div>
+          </div>
+
+          {/* Sucursal Trujillo */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group cursor-pointer">
+            <div className="w-full h-48 overflow-hidden">
+              <img 
+                src="/trujillo.png" 
+                alt="Sucursal Trujillo" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+            <div className="p-6 text-center bg-white relative z-10">
+              <h3 className="text-xl font-bold text-gray-900">Trujillo</h3>
             </div>
           </div>
         </div>

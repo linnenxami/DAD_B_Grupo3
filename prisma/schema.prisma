@@ -8,32 +8,47 @@ datasource db {
 }
 
 model Usuario {
-  id                   BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
-  nombre               String               @db.VarChar(255)
-  correo               String               @unique @db.VarChar(255)
-  contrasena           String               @db.VarChar(255)
-  rol                  String               @default("cliente")
-  dni                  String?              @unique @db.VarChar(15)
-  telefono             String?              @db.VarChar(20)
-  created_at           DateTime?            @default(now()) @db.Timestamp(0)
-  updated_at           DateTime?            @default(now()) @db.Timestamp(0)
-  
+  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  nombre     String    @db.VarChar(255)
+  correo     String    @unique(map: "Usuario_correo_key") @db.VarChar(255)
+  contrasena String    @db.VarChar(255)
+  rol        String    @default("operario")
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @default(now()) @db.Timestamp(0)
+
+  @@map("usuario")
+}
+
+model Cliente {
+  id                   BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  nombre               String             @db.VarChar(255)
+  correo               String             @unique(map: "Cliente_correo_key") @db.VarChar(255)
+  contrasena           String             @db.VarChar(255)
+  dni                  String?            @unique(map: "Cliente_dni_key") @db.VarChar(15)
+  telefono             String?            @db.VarChar(20)
+  fecha_nacimiento     DateTime?          @db.Date
+  created_at           DateTime?          @default(now()) @db.Timestamp(0)
+  updated_at           DateTime?          @default(now()) @db.Timestamp(0)
   asientos_bloqueados  AsientoViaje[]
-  pasajes              Pasaje[]
   codigos_descuento    CodigoDescuento[]
+  pasajes              Pasaje[]
+  codigos_verificacion VerificationCode[]
+
+  @@map("cliente")
 }
 
 model Sucursal {
-  id                   BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
-  nombre               String       @db.VarChar(100)
-  direccion            String?      @db.VarChar(255)
-  created_at           DateTime?    @default(now()) @db.Timestamp(0)
-  updated_at           DateTime?    @default(now()) @db.Timestamp(0)
-  
-  rutas_origen         Ruta[]       @relation("RutaOrigen")
-  rutas_destino        Ruta[]       @relation("RutaDestino")
-  encomiendas_origen   Encomienda[] @relation("EncomiendaOrigen")
-  encomiendas_destino  Encomienda[] @relation("EncomiendaDestino")
+  id                  BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  nombre              String       @db.VarChar(100)
+  direccion           String?      @db.VarChar(255)
+  created_at          DateTime?    @default(now()) @db.Timestamp(0)
+  updated_at          DateTime?    @default(now()) @db.Timestamp(0)
+  encomiendas_destino Encomienda[] @relation("EncomiendaDestino")
+  encomiendas_origen  Encomienda[] @relation("EncomiendaOrigen")
+  rutas_destino       Ruta[]       @relation("RutaDestino")
+  rutas_origen        Ruta[]       @relation("RutaOrigen")
+
+  @@map("sucursal")
 }
 
 model Bus {
@@ -48,87 +63,97 @@ model Bus {
   updated_at            DateTime? @default(now()) @db.Timestamp(0)
   
   viajes                Viaje[]
+
+  @@map("bus")
 }
 
 model Ruta {
-  id                         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  origen_id                  BigInt    @db.UnsignedBigInt
-  destino_id                 BigInt    @db.UnsignedBigInt
-  duracion_estimada_minutos  Int
-  precio_base                Decimal   @db.Decimal(8, 2)
-  created_at                 DateTime? @default(now()) @db.Timestamp(0)
-  updated_at                 DateTime? @default(now()) @db.Timestamp(0)
+  id                        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  origen_id                 BigInt    @db.UnsignedBigInt
+  destino_id                BigInt    @db.UnsignedBigInt
+  duracion_estimada_minutos Int
+  precio_base               Decimal   @db.Decimal(8, 2)
+  created_at                DateTime? @default(now()) @db.Timestamp(0)
+  updated_at                DateTime? @default(now()) @db.Timestamp(0)
+  destino                   Sucursal  @relation("RutaDestino", fields: [destino_id], references: [id], onDelete: Cascade)
+  origen                    Sucursal  @relation("RutaOrigen", fields: [origen_id], references: [id], onDelete: Cascade)
+  viajes                    Viaje[]
 
-  origen      Sucursal @relation("RutaOrigen", fields: [origen_id], references: [id], onDelete: Cascade)
-  destino     Sucursal @relation("RutaDestino", fields: [destino_id], references: [id], onDelete: Cascade)
-  viajes      Viaje[]
+  @@index([destino_id], map: "ruta_destino_id_fkey")
+  @@index([origen_id], map: "ruta_origen_id_fkey")
+  @@map("ruta")
 }
 
 model Viaje {
-  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  ruta_id        BigInt    @db.UnsignedBigInt
-  bus_id         BigInt    @db.UnsignedBigInt
-  fecha_salida   DateTime  @db.DateTime(0)
-  fecha_llegada  DateTime? @db.DateTime(0)
-  estado         String    @default("programado")
-  created_at     DateTime? @default(now()) @db.Timestamp(0)
-  updated_at     DateTime? @default(now()) @db.Timestamp(0)
+  id             BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  ruta_id        BigInt         @db.UnsignedBigInt
+  bus_id         BigInt         @db.UnsignedBigInt
+  fecha_salida   DateTime       @db.DateTime(0)
+  fecha_llegada  DateTime?      @db.DateTime(0)
+  estado         String         @default("programado")
+  created_at     DateTime?      @default(now()) @db.Timestamp(0)
+  updated_at     DateTime?      @default(now()) @db.Timestamp(0)
+  asientos_viaje AsientoViaje[]
+  encomiendas    Encomienda[]
+  pagos          Pago[]
+  bus            Bus            @relation(fields: [bus_id], references: [id], onDelete: Cascade)
+  ruta           Ruta           @relation(fields: [ruta_id], references: [id], onDelete: Cascade)
 
-  ruta            Ruta           @relation(fields: [ruta_id], references: [id], onDelete: Cascade)
-  bus             Bus            @relation(fields: [bus_id], references: [id], onDelete: Cascade)
-  asientos_viaje  AsientoViaje[]
-  encomiendas     Encomienda[]
+  @@index([bus_id], map: "viaje_bus_id_fkey")
+  @@index([ruta_id], map: "viaje_ruta_id_fkey")
+  @@map("viaje")
 }
 
 model AsientoViaje {
-  id                        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  viaje_id                  BigInt    @db.UnsignedBigInt
-  numero_asiento            Int
-  piso                      Int       @default(1) // NUEVO: Piso al que pertenece el asiento
-  estado                    String    @default("disponible")
-  bloqueado_por_usuario_id  BigInt?   @db.UnsignedBigInt
-  bloqueado_en              DateTime? @db.Timestamp(0)
-  created_at                DateTime? @default(now()) @db.Timestamp(0)
-  updated_at                DateTime? @default(now()) @db.Timestamp(0)
+  id                       BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  viaje_id                 BigInt    @db.UnsignedBigInt
+  numero_asiento           Int
+  piso                     Int       @default(1)
+  estado                   String    @default("disponible")
+  bloqueado_por_usuario_id BigInt?   @db.UnsignedBigInt
+  bloqueado_en             DateTime? @db.Timestamp(0)
+  created_at               DateTime? @default(now()) @db.Timestamp(0)
+  updated_at               DateTime? @default(now()) @db.Timestamp(0)
+  bloqueado_por_cliente    Cliente?  @relation(fields: [bloqueado_por_usuario_id], references: [id])
+  viaje                    Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+  pagos                    Pago[]
+  pasaje                   Pasaje?
 
-  viaje                 Viaje    @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
-  bloqueado_por_usuario Usuario? @relation(fields: [bloqueado_por_usuario_id], references: [id], onDelete: SetNull)
-  pasaje                Pasaje?
-
-  @@unique([viaje_id, numero_asiento])
+  @@unique([viaje_id, numero_asiento], map: "AsientoViaje_viaje_id_numero_asiento_key")
+  @@index([bloqueado_por_usuario_id], map: "asientoviaje_bloqueado_por_usuario_id_fkey")
+  @@map("asientoviaje")
 }
 
 model Pasaje {
-  id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  asiento_viaje_id BigInt    @unique @db.UnsignedBigInt
+  id               BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  asiento_viaje_id BigInt       @unique(map: "Pasaje_asiento_viaje_id_key") @db.UnsignedBigInt
   
   // NUEVOS CAMPOS DEL PASAJERO FÍSICO/WEB
-  nombres          String    @db.VarChar(255)
-  apellidos        String    @db.VarChar(255)
-  dni              String    @db.VarChar(15)
-  telefono         String?   @db.VarChar(20)
+  nombres          String       @db.VarChar(255)
+  apellidos        String       @db.VarChar(255)
+  dni              String       @db.VarChar(15)
+  telefono         String?      @db.VarChar(20)
 
   // El usuario de la plataforma web ahora es OPCIONAL
-  usuario_id       BigInt?   @db.UnsignedBigInt
-  
-  precio           Decimal   @db.Decimal(8, 2)
-  fecha_compra     DateTime? @default(now()) @db.Timestamp(0)
-  codigo_qr        String?   @unique @db.VarChar(255)
-  created_at       DateTime? @default(now()) @db.Timestamp(0)
-  updated_at       DateTime? @default(now()) @db.Timestamp(0)
+  usuario_id       BigInt?      @db.UnsignedBigInt
+  precio           Decimal      @db.Decimal(8, 2)
+  fecha_compra     DateTime?    @default(now()) @db.Timestamp(0)
+  codigo_qr        String?      @unique(map: "Pasaje_codigo_qr_key") @db.VarChar(255)
+  created_at       DateTime?    @default(now()) @db.Timestamp(0)
+  updated_at       DateTime?    @default(now()) @db.Timestamp(0)
 
   asiento_viaje AsientoViaje @relation(fields: [asiento_viaje_id], references: [id], onDelete: Cascade)
-  usuario       Usuario?     @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+  cliente       Cliente?     @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([usuario_id], map: "pasaje_usuario_id_fkey")
+  @@map("pasaje")
 }
 
 model Encomienda {
   id                  BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  codigo_seguimiento  String    @unique @db.VarChar(50)
-  
-  // NUEVO: Remitente independiente
+  codigo_seguimiento  String    @unique(map: "Encomienda_codigo_seguimiento_key") @db.VarChar(50)
   remitente_nombre    String    @db.VarChar(255)
   remitente_dni       String    @db.VarChar(15)
-  
   destinatario_nombre String    @db.VarChar(255)
   destinatario_dni    String    @db.VarChar(15)
   origen_id           BigInt    @db.UnsignedBigInt
@@ -140,21 +165,58 @@ model Encomienda {
   estado              String    @default("recepcionado")
   created_at          DateTime? @default(now()) @db.Timestamp(0)
   updated_at          DateTime? @default(now()) @db.Timestamp(0)
+  destino             Sucursal  @relation("EncomiendaDestino", fields: [destino_id], references: [id], onDelete: Cascade)
+  origen              Sucursal  @relation("EncomiendaOrigen", fields: [origen_id], references: [id], onDelete: Cascade)
+  viaje               Viaje?    @relation(fields: [viaje_id], references: [id])
 
-  origen      Sucursal  @relation("EncomiendaOrigen", fields: [origen_id], references: [id], onDelete: Cascade)
-  destino     Sucursal  @relation("EncomiendaDestino", fields: [destino_id], references: [id], onDelete: Cascade)
-  viaje       Viaje?    @relation(fields: [viaje_id], references: [id], onDelete: SetNull)
+  @@index([destino_id], map: "encomienda_destino_id_fkey")
+  @@index([origen_id], map: "encomienda_origen_id_fkey")
+  @@index([viaje_id], map: "encomienda_viaje_id_fkey")
+  @@map("encomienda")
 }
 
 model CodigoDescuento {
   id                   BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  codigo               String    @unique @db.VarChar(20)
+  codigo               String    @unique(map: "CodigoDescuento_codigo_key") @db.VarChar(20)
   usuario_id           BigInt    @db.UnsignedBigInt
   porcentaje_descuento Int       @default(10)
   esta_usado           Boolean   @default(false)
   fecha_expiracion     DateTime? @db.DateTime(0)
   created_at           DateTime? @default(now()) @db.Timestamp(0)
   updated_at           DateTime? @default(now()) @db.Timestamp(0)
+  cliente              Cliente   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
-  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+  @@index([usuario_id], map: "codigodescuento_usuario_id_fkey")
+  @@map("codigodescuento")
+}
+
+model VerificationCode {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  user_id    BigInt   @db.UnsignedBigInt
+  code       String   @db.VarChar(10)
+  expires_at DateTime @db.DateTime(0)
+  is_used    Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @default(now()) @db.Timestamp(0)
+  cliente    Cliente  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id], map: "verification_codes_user_id_fkey")
+  @@map("verification_codes")
+}
+
+model Pago {
+  id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  viaje_id      BigInt        @db.UnsignedBigInt
+  asiento_id    BigInt?       @db.UnsignedBigInt
+  preference_id String        @db.VarChar(255)
+  status        String        @default("pending")
+  amount        Decimal       @db.Decimal(8, 2)
+  created_at    DateTime      @default(now()) @db.Timestamp(0)
+  updated_at    DateTime      @default(now()) @db.Timestamp(0)
+  asiento       AsientoViaje? @relation(fields: [asiento_id], references: [id])
+  viaje         Viaje         @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+
+  @@index([asiento_id], map: "pago_asiento_id_fkey")
+  @@index([viaje_id], map: "pago_viaje_id_fkey")
+  @@map("pago")
 }

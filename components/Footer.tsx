@@ -3,7 +3,7 @@ import { BookOpen } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#1B211A] text-white py-12 border-t border-gray-800 mt-auto">
+    <footer className="bg-[#1B211A] text-white py-8 border-t border-gray-800 mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center md:items-start text-center md:text-left">
 
@@ -22,7 +22,7 @@ export default function Footer() {
               <img
                 src="/logocumbe.png"
                 alt="El Cumbe Logo"
-                className="h-24 md:h-32 w-auto object-contain hover:opacity-90 transition-opacity"
+                className="h-16 md:h-20 w-auto object-contain hover:opacity-90 transition-opacity"
               />
             </Link>
           </div>
@@ -32,16 +32,16 @@ export default function Footer() {
             <h4 className="text-lg font-semibold text-gray-100">Atención al Cliente</h4>
             <Link
               href="/reclamaciones"
-              className="flex flex-col items-center justify-center gap-3 px-6 py-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 rounded-lg text-white font-medium transition-all group text-center"
+              className="flex items-center justify-center gap-2.5 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 rounded-lg text-white text-sm font-medium transition-all group"
             >
-              <BookOpen size={40} className="text-[#f07639] group-hover:scale-110 transition-transform" />
+              <BookOpen size={20} className="text-[#f07639] group-hover:scale-110 transition-transform" />
               <span>Libro de Reclamaciones</span>
             </Link>
           </div>
 
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-800 text-center md:flex md:justify-between md:items-center">
+        <div className="mt-8 pt-6 border-t border-gray-800 text-center md:flex md:justify-between md:items-center">
           <p className="text-gray-500 text-sm">
             &copy; 2026 El Cumbe. Todos los derechos reservados.
           </p>

@@ -1,6 +1,6 @@
 import { Ticket, Package, Bus, TrendingUp, AlertCircle, MapPin, Building } from "lucide-react";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import {
   getDashboardStats,
   getDemandaAlertas,

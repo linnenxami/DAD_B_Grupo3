@@ -1,15 +1,27 @@
-import { PrismaClient } from '@prisma/client';
-import { serializeBigInt } from './app/actions';
+import { prisma } from './lib/prisma';
+import { serializeBigInt } from './lib/utils';
 
-const prisma = new PrismaClient();
+interface MappedTrip {
+  id: string;
+  ruta_id: string;
+  bus_id: string;
+  fecha_salida: string;
+  fecha_llegada: string | null;
+  estado: string;
+  created_at: string;
+  updated_at: string;
+  departure_time_formatted: string;
+  available_seats: number;
+  [key: string]: any;
+}
 
 async function main() {
-  const trips = await prisma.trips.findMany({
+  const trips = await prisma.viaje.findMany({
     include: {
-      routes: true,
-      trip_seats: {
+      ruta: true,
+      asientos_viaje: {
         where: {
-          status: "disponible",
+          estado: "disponible",
         },
       },
     },
@@ -19,10 +31,12 @@ async function main() {
 
   const serialized = serializeBigInt(trips);
   
-  const mapped = serialized.map((trip: any) => ({
+  const mapped: MappedTrip[] = serialized.map((trip: any) => ({
     ...trip,
-    departure_time_formatted: new Date(trip.departure_time).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' }),
-    available_seats: trip.trip_seats ? trip.trip_seats.length : 0
+    departure_time_formatted: trip.fecha_salida
+      ? new Date(trip.fecha_salida).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima' })
+      : '',
+    available_seats: trip.asientos_viaje ? trip.asientos_viaje.length : 0
   }));
 
   console.log("MAPPED:", JSON.stringify(mapped, null, 2));

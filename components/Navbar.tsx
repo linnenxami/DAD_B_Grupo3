@@ -54,10 +54,19 @@ export default function Navbar() {
 
                 {isDropdownOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Perfil</Link>
-                    <Link href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Historial</Link>
+                    {session.user?.role === "cliente" ? (
+                      <>
+                        <Link href="/perfil" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsDropdownOpen(false)}>Mi Perfil</Link>
+                        <Link href="/perfil?tab=tickets" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsDropdownOpen(false)}>Mis Pasajes</Link>
+                      </>
+                    ) : (
+                      <Link href="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsDropdownOpen(false)}>Panel Admin</Link>
+                    )}
                     <button
-                      onClick={() => signOut({ callbackUrl: '/' })}
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        signOut({ callbackUrl: '/' });
+                      }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Cerrar sesión
@@ -115,10 +124,19 @@ export default function Navbar() {
                   </div>
                 </div>
                 <div className="mt-3 space-y-1">
-                  <Link href="#" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Perfil</Link>
-                  <Link href="#" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Historial</Link>
+                  {session.user?.role === "cliente" ? (
+                    <>
+                      <Link href="/perfil" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50" onClick={() => setIsMobileMenuOpen(false)}>Mi Perfil</Link>
+                      <Link href="/perfil?tab=tickets" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50" onClick={() => setIsMobileMenuOpen(false)}>Mis Pasajes</Link>
+                    </>
+                  ) : (
+                    <Link href="/admin" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50" onClick={() => setIsMobileMenuOpen(false)}>Panel Admin</Link>
+                  )}
                   <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      signOut({ callbackUrl: '/' });
+                    }}
                     className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                   >
                     Cerrar sesión
