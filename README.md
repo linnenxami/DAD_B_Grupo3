@@ -16,7 +16,7 @@ Sigue estos pasos para configurar el proyecto en tu máquina:
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/ManuelCarrasco28/app_WebCumbe.git
+git clone https://github.com/IlderDevUSS/app_WebCumbe
 cd app_WebCumbe
 ```
 
