@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Calendar, User, Ticket, Loader2, Eye, X, QrCode } from "lucide-react";
+import { Search, MapPin, Calendar, User, Ticket, Loader2, Eye, X, QrCode, RotateCcw, Edit } from "lucide-react";
 import QRCode from "qrcode";
-import { buscarPasajesVendidos } from "../../actions/pasajes";
+import { buscarPasajesVendidos, editarPasaje } from "../../actions/pasajes";
 
 type Sucursal = { id: string; nombre: string };
 
@@ -20,6 +20,56 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
   // Modal state
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+
+  // Estados para Modal de Edición
+  const [editingTicket, setEditingTicket] = useState<any | null>(null);
+  const [editNombres, setEditNombres] = useState("");
+  const [editApellidos, setEditApellidos] = useState("");
+  const [editDni, setEditDni] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [editPrecio, setEditPrecio] = useState("0");
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleOpenEdit = (ticket: any) => {
+    setEditingTicket(ticket);
+    setEditNombres(ticket.pasajero.nombres);
+    setEditApellidos(ticket.pasajero.apellidos);
+    setEditDni(ticket.pasajero.dni);
+    setEditTelefono(ticket.pasajero.telefono || "");
+    setEditPrecio(ticket.precio.toString());
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTicket) return;
+    if (!editNombres || !editApellidos || !editDni) {
+      alert("Nombres, Apellidos y DNI son campos obligatorios.");
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const res = await editarPasaje({
+        pasaje_id: editingTicket.id,
+        nombres: editNombres,
+        apellidos: editApellidos,
+        dni: editDni,
+        telefono: editTelefono || undefined,
+        precio: parseFloat(editPrecio)
+      });
+
+      if (res.success) {
+        setEditingTicket(null);
+        handleSearch();
+      } else {
+        alert(res.error || "Ocurrió un error al editar el pasaje.");
+      }
+    } catch (err) {
+      alert("Error de red. Inténtalo de nuevo.");
+    } finally {
+      setIsEditing(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedTicket?.codigo_qr) {
@@ -52,36 +102,53 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
     setLoading(false);
   };
 
+  const handleLimpiar = async () => {
+    setOrigenId("");
+    setDestinoId("");
+    setFecha("");
+    setDni("");
+    setLoading(true);
+    setHasSearched(true);
+    
+    const res = await buscarPasajesVendidos({});
+    if (res.success) {
+      setPasajes(res.data);
+    } else {
+      alert("Error al cargar los pasajes");
+    }
+    setLoading(false);
+  };
+
   // Cargar pasajes recientes al montar
   useEffect(() => {
     handleSearch();
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-slate-100 overflow-hidden">
       {/* Barra de Filtros */}
-      <div className="p-4 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-        <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-4">
+      <div className="p-4 border-b border-slate-100 bg-[#f8f9fc] flex-shrink-0">
+        <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">DNI Pasajero</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">DNI Pasajero</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="text" 
                 value={dni} onChange={(e) => setDni(e.target.value)}
                 placeholder="Buscar DNI..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f07639] outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:border-[#f07639]/30 text-[13px] font-semibold text-slate-700 placeholder-slate-400 outline-none transition-all"
               />
             </div>
           </div>
 
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Origen</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Origen</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <select 
                 value={origenId} onChange={(e) => setOrigenId(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f07639] outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:border-[#f07639]/30 text-[13px] font-semibold text-slate-700 outline-none transition-all appearance-none cursor-pointer"
               >
                 <option value="">Todos</option>
                 {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
@@ -90,12 +157,12 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
           </div>
           
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Destino</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Destino</label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <select 
                 value={destinoId} onChange={(e) => setDestinoId(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f07639] outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:border-[#f07639]/30 text-[13px] font-semibold text-slate-700 outline-none transition-all appearance-none cursor-pointer"
               >
                 <option value="">Todos</option>
                 {sucursales.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
@@ -104,30 +171,41 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
           </div>
 
           <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Fecha de Viaje</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Fecha de Viaje</label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="date"
                 value={fecha} onChange={(e) => setFecha(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f07639] outline-none"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-xl focus:border-[#f07639]/30 text-[13px] font-semibold text-slate-700 outline-none transition-all cursor-pointer"
               />
             </div>
           </div>
 
-          <button 
-            type="submit"
-            disabled={loading}
-            className="bg-gray-900 hover:bg-black text-white px-6 py-2 rounded-xl font-medium transition-colors flex items-center h-[42px]"
-          >
-            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-            {loading ? "Buscando" : "Buscar"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              type="submit"
+              disabled={loading}
+              className="bg-gradient-to-r from-[#f07639] to-[#d45a1f] hover:from-[#e06528] hover:to-[#c7551d] text-white px-6 py-2.5 rounded-xl font-bold text-[13px] transition-all flex items-center shadow-lg shadow-[#f07639]/15 hover:-translate-y-0.5 cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+              {loading ? "Buscando" : "Buscar"}
+            </button>
+
+            <button 
+              type="button"
+              onClick={handleLimpiar}
+              className="bg-slate-100 hover:bg-slate-200 border border-slate-200/60 text-slate-500 px-3 py-2.5 rounded-xl font-bold transition-all hover:-translate-y-0.5 flex items-center justify-center cursor-pointer shadow-sm"
+              title="Limpiar filtros y restablecer"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          </div>
         </form>
       </div>
 
       {/* Tabla de Resultados */}
-      <div className="flex-1 overflow-auto p-4 bg-gray-50">
+      <div className="flex-1 overflow-auto p-4 bg-[#f8f9fc]">
         {loading && pasajes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
             <Loader2 className="w-8 h-8 animate-spin text-[#f07639] mb-2" />
@@ -196,13 +274,22 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
                         S/ {Number(p.precio).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => setSelectedTicket(p)}
-                          className="inline-flex items-center p-2 border border-gray-200 rounded-lg text-gray-500 hover:bg-[#f07639] hover:text-white hover:border-[#f07639] transition-colors"
-                          title="Ver Detalle"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => setSelectedTicket(p)}
+                            className="inline-flex items-center p-2 border border-gray-200 rounded-lg text-gray-500 hover:bg-[#f07639] hover:text-white hover:border-[#f07639] transition-colors cursor-pointer"
+                            title="Ver Detalle"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(p)}
+                            className="inline-flex items-center p-2 border border-gray-200 rounded-lg text-gray-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-colors cursor-pointer"
+                            title="Editar Pasaje"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -285,6 +372,106 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición de Pasaje */}
+      {editingTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
+            {/* Header del Modal */}
+            <div className="bg-blue-600 p-6 text-white text-center relative">
+              <button 
+                type="button"
+                onClick={() => setEditingTicket(null)}
+                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <Edit className="w-10 h-10 mx-auto text-blue-200 mb-2 animate-pulse" />
+              <h2 className="text-xl font-black tracking-widest uppercase">Editar Boleto</h2>
+              <p className="text-blue-100 text-xs mt-1 font-semibold">
+                Asiento #${editingTicket.asiento_viaje.numero_asiento} (Piso {editingTicket.asiento_viaje.piso})
+              </p>
+            </div>
+            
+            {/* Formulario */}
+            <form onSubmit={handleSaveEdit} className="p-8 space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">DNI Pasajero</label>
+                <input 
+                  type="text" 
+                  value={editDni} 
+                  onChange={(e) => setEditDni(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/50 focus:bg-white focus:border-blue-500 rounded-xl outline-none font-bold text-slate-700 transition-all text-sm"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Nombres</label>
+                  <input 
+                    type="text" 
+                    value={editNombres} 
+                    onChange={(e) => setEditNombres(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/50 focus:bg-white focus:border-blue-500 rounded-xl outline-none font-bold text-slate-700 transition-all text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Apellidos</label>
+                  <input 
+                    type="text" 
+                    value={editApellidos} 
+                    onChange={(e) => setEditApellidos(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/50 focus:bg-white focus:border-blue-500 rounded-xl outline-none font-bold text-slate-700 transition-all text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Teléfono (Opcional)</label>
+                <input 
+                  type="text" 
+                  value={editTelefono} 
+                  onChange={(e) => setEditTelefono(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/50 focus:bg-white focus:border-blue-500 rounded-xl outline-none font-bold text-slate-700 transition-all text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1.5 pl-1">Precio Cobrado (S/)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editPrecio} 
+                  onChange={(e) => setEditPrecio(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100/50 focus:bg-white focus:border-blue-500 rounded-xl outline-none font-black text-slate-700 transition-all text-base text-blue-600"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingTicket(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 rounded-xl font-bold transition-all text-sm cursor-pointer border border-slate-200/60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isEditing}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all text-sm cursor-pointer shadow-lg shadow-blue-500/15 flex items-center justify-center gap-1.5"
+                >
+                  {isEditing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {isEditing ? "Guardando" : "Guardar Cambios"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

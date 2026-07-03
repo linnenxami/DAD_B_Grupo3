@@ -13,12 +13,8 @@ export async function POST(req: Request) {
           estado: "pendiente" 
         },
         data: { 
-          estado: "disponible", 
-          bloqueado_por_usuario_id: null, 
-          bloqueado_por_token: null, 
-          bloqueado_en: null 
-        } as any
-      });
+          estado: "disponible"
+        }
     }
     
     return NextResponse.json({ success: true });

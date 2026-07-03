@@ -109,15 +109,33 @@ export async function venderPasaje(data: {
 
     // Ejecutamos todo dentro de una transacción para mantener integridad
     const resultado = await prisma.$transaction(async (tx) => {
-      // a) Verificar que el asiento sigue disponible
-      const asiento = await tx.asientoViaje.findUnique({
-        where: { id: aId }
+      // 1. Obtener datos del asiento y ruta para validaciones
+      const asientoData = await tx.asientoViaje.findUnique({
+        where: { id: aId },
+        include: { viaje: { include: { ruta: true } } }
       });
 
-      if (!asiento) throw new Error("Asiento no encontrado.");
-      if (asiento.estado !== "disponible") throw new Error("El asiento ya no está disponible.");
+      if (!asientoData) throw new Error("Asiento no encontrado en el sistema.");
+      
+      // 2. Validación estricta de Precio (Evitar fraude)
+      // Mínimo 50% del precio base permitido por si hacen descuento manual, sino rechaza.
+      const precioBase = Number(asientoData.viaje.ruta.precio_base);
+      if (data.precio < (precioBase * 0.5)) {
+         throw new Error(`El precio (S/ ${data.precio}) es inválido o sospechosamente bajo. Mínimo permitido: S/ ${(precioBase * 0.5).toFixed(2)}.`);
+      }
 
-      // b) Buscar a la persona por DNI y crearla si no existe (upsert)
+      // 3. Bloqueo Optimista / Actualización Atómica (Evita Doble Venta)
+      // Si el asiento web o presencial lo compra al mismo tiempo, solo 1 logrará el count === 1
+      const updateAsiento = await tx.asientoViaje.updateMany({
+        where: { id: aId, estado: "disponible" },
+        data: { estado: "ocupado" }
+      });
+
+      if (updateAsiento.count === 0) {
+        throw new Error("Ups, el asiento acaba de ser ocupado por otro canal u otra ventanilla. Intenta con otro asiento.");
+      }
+
+      // 4. Buscar a la persona por DNI y crearla si no existe (upsert)
       const persona = await tx.persona.upsert({
         where: { dni: data.pasajero.dni },
         create: {
@@ -132,7 +150,7 @@ export async function venderPasaje(data: {
         }
       });
 
-      // c) Crear el pasaje vinculándolo a la Persona
+      // 5. Crear el pasaje vinculándolo a la Persona
       const nuevoPasaje = await tx.pasaje.create({
         data: {
           asiento_viaje_id: aId,
@@ -142,12 +160,6 @@ export async function venderPasaje(data: {
           precio: data.precio,
           codigo_qr: `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
         }
-      });
-
-      // d) Actualizar el estado del asiento a ocupado
-      await tx.asientoViaje.update({
-        where: { id: aId },
-        data: { estado: "ocupado" }
       });
 
       return nuevoPasaje;
@@ -230,5 +242,98 @@ export async function buscarPasajesVendidos(filtros: { origenId?: string, destin
   } catch (error) {
     console.error("Error al buscar pasajes vendidos:", error);
     return { success: false, error: "Error al buscar pasajes vendidos." };
+  }
+}
+
+// 6. Editar Pasaje y Regenerar Código QR
+export async function editarPasaje(data: {
+  pasaje_id: string | number;
+  nombres: string;
+  apellidos: string;
+  dni: string;
+  telefono?: string;
+  precio: number;
+}) {
+  try {
+    const pId = BigInt(data.pasaje_id);
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Obtener pasaje actual
+      const pasaje = await tx.pasaje.findUnique({
+        where: { id: pId },
+        include: { pasajero: true }
+      });
+
+      if (!pasaje) throw new Error("Pasaje no encontrado.");
+
+      // 2. Vincular o crear la persona con el nuevo DNI (si cambió)
+      let personaId = pasaje.persona_id;
+      if (pasaje.pasajero.dni !== data.dni) {
+        const persona = await tx.persona.upsert({
+          where: { dni: data.dni },
+          create: {
+            nombres: data.nombres.toUpperCase(),
+            apellidos: data.apellidos.toUpperCase(),
+            dni: data.dni,
+            telefono: data.telefono || null,
+          },
+          update: {
+            nombres: data.nombres.toUpperCase(),
+            apellidos: data.apellidos.toUpperCase(),
+            telefono: data.telefono || undefined,
+          }
+        });
+        personaId = persona.id;
+      } else {
+        // Si el DNI es el mismo, solo actualizamos los datos de la persona asociada
+        await tx.persona.update({
+          where: { id: pasaje.persona_id },
+          data: {
+            nombres: data.nombres.toUpperCase(),
+            apellidos: data.apellidos.toUpperCase(),
+            telefono: data.telefono || null,
+          }
+        });
+      }
+
+      // 3. Generar un nuevo código QR único y actualizar el pasaje
+      const nuevoQr = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      const pasajeActualizado = await tx.pasaje.update({
+        where: { id: pId },
+        data: {
+          persona_id: personaId,
+          precio: data.precio,
+          codigo_qr: nuevoQr
+        },
+        include: {
+          pasajero: true,
+          comprador: true,
+          asiento_viaje: {
+            include: {
+              viaje: {
+                include: {
+                  ruta: {
+                    include: {
+                      origen: true,
+                      destino: true
+                    }
+                  },
+                  bus: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      return pasajeActualizado;
+    });
+
+    revalidatePath("/admin/pasajes");
+    return { success: true, data: serializeBigInt(resultado) };
+  } catch (error: any) {
+    console.error("Error al editar pasaje:", error);
+    return { success: false, error: error.message || "Error al editar pasaje." };
   }
 }

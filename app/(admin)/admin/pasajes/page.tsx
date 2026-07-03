@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { obtenerSucursales } from "../../actions/sucursales";
 import PasajesClient from "./PasajesClient";
 
@@ -11,7 +12,9 @@ export default async function PasajesPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <PasajesClient initialSucursales={sucursales} />
+      <Suspense fallback={<div className="flex items-center justify-center py-20 text-slate-400 text-sm font-medium">Cargando...</div>}>
+        <PasajesClient initialSucursales={sucursales} />
+      </Suspense>
     </div>
   );
 }
