@@ -323,7 +323,13 @@ export async function getClienteProfile(email: string) {
     const usuario = await prisma.usuario.findUnique({
       where: { correo: email },
       include: {
-        persona: true,
+        persona: {
+          include: {
+            reclamos: {
+              orderBy: { created_at: "desc" }
+            }
+          }
+        },
       },
     });
 

@@ -15,6 +15,7 @@ import {
   Route,
   MapPin,
   ChevronRight,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useState } from "react";
 import NotificacionesDropdown from "./admin/NotificacionesDropdown";
@@ -35,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Rutas", href: "/admin/rutas", icon: MapPin },
     { name: "Buses", href: "/admin/buses", icon: Bus },
     { name: "Sucursales", href: "/admin/sucursales", icon: Building },
+    { name: "Reclamaciones", href: "/admin/reclamaciones", icon: MessageSquareWarning },
   ];
 
   const getPageTitle = () => {

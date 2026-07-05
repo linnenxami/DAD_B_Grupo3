@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getClienteProfile, updateClienteProfile } from "@/app/actions";
-import { User, Calendar, Phone, CreditCard, Mail, Ticket, CheckCircle, Save, Loader2, Bus, Download, Search, X, MapPin, Lock } from "lucide-react";
+import { User, Calendar, Phone, CreditCard, Mail, Ticket, CheckCircle, Save, Loader2, Bus, Download, Search, X, MapPin, Lock, MessageSquareWarning, AlertCircle, Clock } from "lucide-react";
 import { generateBoletoPDF } from "@/lib/pdfUtils";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -47,7 +47,7 @@ function PerfilContent() {
   // Sincronizar tab desde url
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab === "tickets" || tab === "datos") {
+    if (tab === "tickets" || tab === "datos" || tab === "reclamaciones") {
       setActiveTab(tab);
     } else if (!tab) {
       setActiveTab("datos");
@@ -296,7 +296,18 @@ function PerfilContent() {
             }`}
           >
             <Ticket size={18} />
-            Mis Pasajes / Tickets ({profile?.pasajes?.length || 0})
+            Mis Pasajes ({profile?.pasajes?.length || 0})
+          </button>
+          <button
+            onClick={() => setActiveTab("reclamaciones")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold rounded-lg transition-all ${
+              activeTab === "reclamaciones"
+                ? "bg-[#f07639] text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <MessageSquareWarning size={18} />
+            Mis Reclamos ({profile?.persona?.reclamos?.length || 0})
           </button>
         </div>
 
@@ -576,6 +587,89 @@ function PerfilContent() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {/* CONTENIDO DE LA PESTAÑA: RECLAMACIONES */}
+        {activeTab === "reclamaciones" && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 md:p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <span className="w-1.5 h-5 bg-[#f07639] rounded-full"></span>
+              Historial de Reclamaciones
+            </h2>
+
+            {!profile?.persona?.reclamos || profile.persona.reclamos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                  <MessageSquareWarning className="w-8 h-8 text-gray-300" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">Aún no tienes reclamos registrados</h3>
+                <p className="text-gray-500 text-sm max-w-sm mb-6">Si has tenido un inconveniente, puedes registrarlo en nuestro libro de reclamaciones.</p>
+                <Link href="/reclamaciones" className="px-6 py-2.5 bg-[#f07639] text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm">
+                  Registrar Reclamo
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {profile.persona.reclamos.map((reclamo: any) => (
+                  <div key={reclamo.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md transition-shadow group">
+                    <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                            reclamo.tipo === 'queja' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {reclamo.tipo}
+                          </span>
+                          <span className="text-xs text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded-md">
+                            {reclamo.codigo_reclamo}
+                          </span>
+                          <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
+                            <Calendar size={12} />
+                            {new Date(reclamo.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Detalle</p>
+                          <p className="text-sm text-gray-700 line-clamp-2">{reclamo.detalle_incidente}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-start sm:items-end gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-5 min-w-[140px]">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</p>
+                        <div className="mt-1">
+                          {reclamo.estado === "pendiente" && (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 text-yellow-700 font-bold text-xs rounded-xl">
+                              <Clock size={14} /> Pendiente
+                            </span>
+                          )}
+                          {reclamo.estado === "en_proceso" && (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-700 font-bold text-xs rounded-xl">
+                              <AlertCircle size={14} /> En Proceso
+                            </span>
+                          )}
+                          {reclamo.estado === "resuelto" && (
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 font-bold text-xs rounded-xl">
+                              <CheckCircle size={14} /> Resuelto
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {reclamo.respuesta_admin && (
+                      <div className="bg-orange-50/50 p-4 border-t border-orange-100/50">
+                        <p className="text-[11px] font-bold text-orange-800 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <MessageSquareWarning size={14} /> Respuesta de El Cumbe
+                        </p>
+                        <p className="text-sm text-gray-700 italic">"{reclamo.respuesta_admin}"</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

@@ -157,7 +157,7 @@ export async function obtenerNotificaciones(): Promise<{ success: boolean; data:
         mensaje: `${r.codigo_reclamo} — ${r.persona.nombres} ${r.persona.apellidos}`,
         fecha: r.created_at?.toISOString() || new Date().toISOString(),
         leida: false,
-        link: "/admin",
+        link: "/admin/reclamaciones",
       });
     }
 
