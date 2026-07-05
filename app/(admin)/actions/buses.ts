@@ -1,7 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // Función auxiliar para parsear y validar ID numéricos / BigInt
 function parseId(id: string | number | bigint): bigint {
@@ -17,6 +21,23 @@ function serializeBigInt<T>(obj: T): any {
   );
 }
 
+const BusSchema = z.object({
+  placa: z.string().min(3, "La placa es obligatoria"),
+  marca: z.string().min(1, "La marca es obligatoria"),
+  capacidad: z.coerce.number().min(1, "Capacidad inválida"),
+  pisos: z.coerce.number().min(1).max(2, "Pisos inválidos"),
+  asientos_piso_1: z.coerce.number().optional().nullable(),
+  asientos_restringidos: z.string().optional().nullable(),
+  imagenes: z.string().optional().nullable(),
+});
+
+async function verifyAdminRole() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "admin") {
+    throw new Error("No autorizado. Solo los administradores pueden realizar esta acción.");
+  }
+}
+
 export async function obtenerBuses() {
   try {
     const buses = await prisma.bus.findMany({
@@ -30,85 +51,87 @@ export async function obtenerBuses() {
   }
 }
 
-export async function crearBus(data: { 
-  placa: string; 
-  marca: string; 
-  capacidad: number; 
-  pisos: number;
-  asientos_piso_1?: number;
-  asientos_restringidos?: string;
-  imagenes?: string;
-}) {
+export async function crearBus(data: any) {
   try {
+    await verifyAdminRole();
+    const validData = BusSchema.parse(data);
+
     const nuevoBus = await prisma.bus.create({
       data: {
-        placa: data.placa,
-        marca: data.marca,
-        capacidad: data.capacidad,
-        pisos: data.pisos,
-        asientos_piso_1: data.asientos_piso_1,
-        asientos_restringidos: data.asientos_restringidos,
-        imagenes: data.imagenes,
+        placa: validData.placa,
+        marca: validData.marca,
+        capacidad: validData.capacidad,
+        pisos: validData.pisos,
+        asientos_piso_1: validData.asientos_piso_1 || null,
+        asientos_restringidos: validData.asientos_restringidos || null,
+        imagenes: validData.imagenes || null,
       },
     });
 
     revalidatePath("/admin/buses");
     return { success: true, data: serializeBigInt(nuevoBus) };
-  } catch (error) {
-    console.error("Error al crear bus:", error);
-    return { success: false, error: "Error al crear el bus. La placa podría estar duplicada." };
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0].message };
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return { success: false, error: "Ya existe un bus con esta placa" };
+      }
+    }
+    return { success: false, error: error.message || "Error al crear el bus" };
   }
 }
 
-export async function actualizarBus(
-  id: string | number, 
-  data: { 
-    placa: string; 
-    marca: string; 
-    capacidad: number; 
-    pisos: number;
-    asientos_piso_1?: number;
-    asientos_restringidos?: string;
-    imagenes?: string;
-  }
-) {
+export async function actualizarBus(id: string | number, data: any) {
   try {
+    await verifyAdminRole();
+    const validData = BusSchema.parse(data);
     const busId = parseId(id);
 
     const busActualizado = await prisma.bus.update({
       where: { id: busId },
       data: {
-        placa: data.placa,
-        marca: data.marca,
-        capacidad: data.capacidad,
-        pisos: data.pisos,
-        asientos_piso_1: data.asientos_piso_1,
-        asientos_restringidos: data.asientos_restringidos,
-        imagenes: data.imagenes,
+        placa: validData.placa,
+        marca: validData.marca,
+        capacidad: validData.capacidad,
+        pisos: validData.pisos,
+        asientos_piso_1: validData.asientos_piso_1 || null,
+        asientos_restringidos: validData.asientos_restringidos || null,
+        imagenes: validData.imagenes || null,
       },
     });
 
     revalidatePath("/admin/buses");
     return { success: true, data: serializeBigInt(busActualizado) };
   } catch (error: any) {
-    console.error("Error al actualizar bus:", error);
-    if (error.code === 'P2002') {
-      return { success: false, error: "Ya existe un bus con esta placa" };
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0].message };
     }
-    return { success: false, error: "Error al actualizar bus" };
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return { success: false, error: "Ya existe un bus con esta placa" };
+      }
+    }
+    return { success: false, error: error.message || "Error al actualizar bus" };
   }
 }
 
 export async function eliminarBus(id: string | number) {
   try {
+    await verifyAdminRole();
     await prisma.bus.delete({
       where: { id: parseId(id) },
     });
 
     revalidatePath("/admin/buses");
     return { success: true };
-  } catch (error) {
-    console.error("Error al eliminar bus:", error);
-    return { success: false, error: "Error al eliminar bus. Puede que tenga viajes asociados." };
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2003') {
+        return { success: false, error: "No se puede eliminar el bus porque tiene viajes asociados" };
+      }
+    }
+    return { success: false, error: error.message || "Error al eliminar bus" };
   }
 }

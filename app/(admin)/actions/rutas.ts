@@ -1,7 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 // Función auxiliar para parsear y validar ID numéricos / BigInt
 function parseId(id: string | number | bigint): bigint {
@@ -15,6 +19,20 @@ function serializeBigInt<T>(obj: T): any {
       typeof value === "bigint" ? value.toString() : value
     )
   );
+}
+
+const RutaSchema = z.object({
+  origen_id: z.union([z.string(), z.number()]),
+  destino_id: z.union([z.string(), z.number()]),
+  duracion_estimada_minutos: z.coerce.number().min(1, "Duración inválida"),
+  precio_base: z.coerce.number().min(0.01, "Precio base debe ser mayor a 0")
+});
+
+async function verifyAdminRole() {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== "admin") {
+    throw new Error("No autorizado. Solo los administradores pueden realizar esta acción.");
+  }
 }
 
 export async function obtenerRutas() {
@@ -34,17 +52,16 @@ export async function obtenerRutas() {
   }
 }
 
-export async function crearRuta(data: { origen_id: string | number; destino_id: string | number; duracion_estimada_minutos: number; precio_base: number }) {
+export async function crearRuta(data: any) {
   try {
-    const origenId = parseId(data.origen_id);
-    const destinoId = parseId(data.destino_id);
+    await verifyAdminRole();
+    const validData = RutaSchema.parse(data);
+
+    const origenId = parseId(validData.origen_id);
+    const destinoId = parseId(validData.destino_id);
 
     if (origenId === destinoId) {
       return { success: false, error: "El origen y el destino no pueden ser la misma sucursal." };
-    }
-
-    if (data.precio_base <= 0) {
-      return { success: false, error: "El precio base debe ser mayor a 0." };
     }
 
     // Opcional: Validar si la ruta ya existe
@@ -60,29 +77,41 @@ export async function crearRuta(data: { origen_id: string | number; destino_id: 
       data: {
         origen_id: origenId,
         destino_id: destinoId,
-        duracion_estimada_minutos: data.duracion_estimada_minutos,
-        precio_base: data.precio_base,
+        duracion_estimada_minutos: validData.duracion_estimada_minutos,
+        precio_base: validData.precio_base,
       },
     });
 
     revalidatePath("/admin/rutas");
     return { success: true, data: serializeBigInt(nuevaRuta) };
-  } catch (error) {
-    console.error("Error al crear ruta:", error);
-    return { success: false, error: "Error al crear ruta" };
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0].message };
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return { success: false, error: "Ya existe un registro con estos datos únicos" };
+      }
+    }
+    return { success: false, error: error.message || "Error al crear ruta" };
   }
 }
 
 export async function eliminarRuta(id: string | number) {
   try {
+    await verifyAdminRole();
     await prisma.ruta.delete({
       where: { id: parseId(id) },
     });
 
     revalidatePath("/admin/rutas");
     return { success: true };
-  } catch (error) {
-    console.error("Error al eliminar ruta:", error);
-    return { success: false, error: "Error al eliminar ruta. Puede que tenga viajes asociados." };
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2003') {
+        return { success: false, error: "No se puede eliminar la ruta porque tiene viajes asociados" };
+      }
+    }
+    return { success: false, error: error.message || "Error al eliminar ruta" };
   }
 }

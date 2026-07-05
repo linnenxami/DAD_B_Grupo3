@@ -25,18 +25,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const userRole = session?.user?.role || "cliente";
+
   const mainNav = [
-    { name: "Inicio", href: "/admin", icon: LayoutDashboard },
-    { name: "Pasajes", href: "/admin/pasajes", icon: Ticket },
-    { name: "Encomiendas", href: "/admin/encomiendas", icon: Package },
+    { name: "Inicio", href: "/admin", icon: LayoutDashboard, roles: ["admin", "vendedor"] },
+    { name: "Pasajes", href: "/admin/pasajes", icon: Ticket, roles: ["admin", "vendedor"] },
+    { name: "Encomiendas", href: "/admin/encomiendas", icon: Package, roles: ["admin", "vendedor"] },
   ];
   
   const managementNav = [
-    { name: "Viajes", href: "/admin/viajes", icon: Route },
-    { name: "Rutas", href: "/admin/rutas", icon: MapPin },
-    { name: "Buses", href: "/admin/buses", icon: Bus },
-    { name: "Sucursales", href: "/admin/sucursales", icon: Building },
-    { name: "Reclamaciones", href: "/admin/reclamaciones", icon: MessageSquareWarning },
+    { name: "Viajes", href: "/admin/viajes", icon: Route, roles: ["admin", "vendedor"] },
+    { name: "Rutas", href: "/admin/rutas", icon: MapPin, roles: ["admin"] },
+    { name: "Buses", href: "/admin/buses", icon: Bus, roles: ["admin"] },
+    { name: "Sucursales", href: "/admin/sucursales", icon: Building, roles: ["admin"] },
+    { name: "Reclamaciones", href: "/admin/reclamaciones", icon: MessageSquareWarning, roles: ["admin"] },
   ];
 
   const getPageTitle = () => {
@@ -45,7 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return current?.name || "Panel de Control";
   };
 
-  const renderNavItem = (item: typeof mainNav[0]) => {
+  const renderNavItem = (item: any) => {
     const isActive = pathname === item.href;
     return (
       <Link
@@ -121,21 +123,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
               </div>
               <div className="space-y-1">
-                {mainNav.map(renderNavItem)}
+                {mainNav.filter(item => item.roles.includes(userRole)).map(renderNavItem)}
               </div>
             </div>
 
             {/* Gestión */}
-            <div className="mb-6">
-              <div className="flex items-center px-4 mb-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
-                <span className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Gestión</span>
-                <div className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+            {managementNav.filter(item => item.roles.includes(userRole)).length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center px-4 mb-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                  <span className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Gestión</span>
+                  <div className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+                </div>
+                <div className="space-y-1">
+                  {managementNav.filter(item => item.roles.includes(userRole)).map(renderNavItem)}
+                </div>
               </div>
-              <div className="space-y-1">
-                {managementNav.map(renderNavItem)}
-              </div>
-            </div>
+            )}
           </nav>
 
           {/* User Panel at Bottom */}
