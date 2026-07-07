@@ -218,7 +218,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   />
                   <div className="absolute right-0 mt-2.5 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     <Link 
-                      href="/perfil"
+                      href="/admin/perfil"
                       onClick={() => setUserDropdownOpen(false)}
                       className="flex items-center px-4 py-2.5 text-[13px] font-semibold text-slate-600 hover:bg-[#f07639]/5 hover:text-[#f07639] transition-colors"
                     >
