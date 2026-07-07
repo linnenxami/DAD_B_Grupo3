@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search, MapPin, Calendar, User, Ticket, Loader2, Eye, X, QrCode, RotateCcw, Edit } from "lucide-react";
 import QRCode from "qrcode";
 import { buscarPasajesVendidos, editarPasaje } from "../../actions/pasajes";
@@ -8,6 +9,12 @@ import { buscarPasajesVendidos, editarPasaje } from "../../actions/pasajes";
 type Sucursal = { id: string; nombre: string };
 
 export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] }) {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [origenId, setOrigenId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [fecha, setFecha] = useState("");
@@ -301,8 +308,8 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
       </div>
 
       {/* Modal de Detalle del Ticket */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+      {mounted && selectedTicket && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
             {/* Header decorativo */}
             <div className="bg-gray-900 p-6 text-white text-center relative">
@@ -373,12 +380,13 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal de Edición de Pasaje */}
-      {editingTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+      {mounted && editingTicket && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden relative animate-in fade-in zoom-in-95 duration-200">
             {/* Header del Modal */}
             <div className="bg-blue-600 p-6 text-white text-center relative">
@@ -473,7 +481,8 @@ export default function ListaPasajes({ sucursales }: { sucursales: Sucursal[] })
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Edit2, Trash2, Hash, Box, Settings, Bus as BusIcon } from "lucide-react";
 import { crearBus, actualizarBus, eliminarBus } from "../../actions/buses";
 
@@ -19,6 +20,12 @@ type Bus = {
 
 export default function BusClient({ initialData }: { initialData: Bus[] }) {
   const [buses, setBuses] = useState<Bus[]>(initialData);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   
   // Estados Modal CRUD
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -286,8 +293,8 @@ export default function BusClient({ initialData }: { initialData: Bus[] }) {
       </div>
 
       {/* Modal Formulario Bus */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      {mounted && isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900">
@@ -430,12 +437,13 @@ export default function BusClient({ initialData }: { initialData: Bus[] }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Configuración de Asientos (Cuadrícula) */}
-      {isConfigModalOpen && selectedBus && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      {mounted && isConfigModalOpen && selectedBus && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <div>
@@ -540,7 +548,8 @@ export default function BusClient({ initialData }: { initialData: Bus[] }) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

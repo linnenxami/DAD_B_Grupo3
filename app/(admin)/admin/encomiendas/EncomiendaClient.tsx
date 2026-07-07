@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Package, Search, Edit2, MapPin, Truck, CheckCircle, PackageOpen, FileText, PlusCircle } from "lucide-react";
 import { actualizarEstadoEncomienda, obtenerEncomiendas } from "../../actions/encomiendas";
 import RegistroEncomienda from "./RegistroEncomienda";
@@ -37,6 +38,12 @@ export default function EncomiendaClient({
   sucursales: { id: string; nombre: string }[]
 }) {
   const [encomiendas, setEncomiendas] = useState<Encomienda[]>(initialEncomiendas);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   
   // Vista actual
   const [view, setView] = useState<"lista" | "registro">("lista");
@@ -283,8 +290,8 @@ export default function EncomiendaClient({
       </div>
 
       {/* Modal Actualizar Estado */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      {mounted && isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900">Actualizar Estado</h3>
@@ -358,7 +365,8 @@ export default function EncomiendaClient({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       </>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { 
   MessageSquareWarning, 
   Search, 
@@ -16,6 +17,12 @@ import { updateReclamoEstado } from "@/app/(admin)/actions/reclamaciones";
 
 export default function ReclamacionesClient({ initialData }: { initialData: any[] }) {
   const [reclamos, setReclamos] = useState(initialData);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReclamo, setSelectedReclamo] = useState<any>(null);
   
@@ -158,8 +165,8 @@ export default function ReclamacionesClient({ initialData }: { initialData: any[
       </div>
 
       {/* Modal */}
-      {isModalOpen && selectedReclamo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      {mounted && isModalOpen && selectedReclamo && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -270,7 +277,8 @@ export default function ReclamacionesClient({ initialData }: { initialData: any[
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

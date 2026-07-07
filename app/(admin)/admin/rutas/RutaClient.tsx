@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Trash2, MapPin, Navigation, Clock, DollarSign } from "lucide-react";
 import { crearRuta, eliminarRuta } from "../../actions/rutas";
 
@@ -28,6 +29,12 @@ export default function RutaClient({
 }) {
   const [rutas, setRutas] = useState<Ruta[]>(initialRutas);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   
   const [formData, setFormData] = useState({
     origen_id: "",
@@ -191,8 +198,8 @@ export default function RutaClient({
       </div>
 
       {/* Modal Formulario */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      {mounted && isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900">Nueva Ruta</h3>
@@ -296,7 +303,8 @@ export default function RutaClient({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
