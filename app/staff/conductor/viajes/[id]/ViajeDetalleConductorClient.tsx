@@ -90,45 +90,69 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
   const getParadas = (origen: string, destino: string) => {
     const o = origen.toLowerCase();
     const d = destino.toLowerCase();
+    
+    let listaParadas: string[] = [];
+
     if ((o.includes("jaén") && d.includes("chiclayo")) || (o.includes("chiclayo") && d.includes("jaén"))) {
-      return ["Jaén", "Chamaya", "Bagua Grande", "Olmos", "Chiclayo"];
+      listaParadas = ["Jaén", "Chamaya", "Bagua Grande", "Olmos", "Chiclayo"];
+    } else if ((o.includes("trujillo") && d.includes("chiclayo")) || (o.includes("chiclayo") && d.includes("trujillo"))) {
+      listaParadas = ["Trujillo", "Mocupe", "Guadalupe", "Pacasmayo", "Chiclayo"];
+    } else if ((o.includes("cajamarca") && d.includes("trujillo")) || (o.includes("trujillo") && d.includes("cajamarca"))) {
+      listaParadas = ["Cajamarca", "Chilete", "Tembladera", "Ciudad de Dios", "Trujillo"];
+    } else {
+      return [origen, "Control A", "Control B", destino];
     }
-    if ((o.includes("trujillo") && d.includes("chiclayo")) || (o.includes("chiclayo") && d.includes("trujillo"))) {
-      return ["Trujillo", "Mocupe", "Guadalupe", "Pacasmayo", "Chiclayo"];
+
+    // Invertir el sentido de las paradas si el origen real corresponde al final de la ruta por defecto
+    if (listaParadas.length > 0 && listaParadas[listaParadas.length - 1].toLowerCase().includes(o)) {
+      listaParadas.reverse();
     }
-    if ((o.includes("cajamarca") && d.includes("trujillo")) || (o.includes("trujillo") && d.includes("cajamarca"))) {
-      return ["Cajamarca", "Chilete", "Tembladera", "Ciudad de Dios", "Trujillo"];
-    }
-    return [origen, "Control A", "Control B", destino];
+
+    return listaParadas;
   };
 
   const paradas = getParadas(viaje.ruta.origen.nombre, viaje.ruta.destino.nombre);
 
-  // Carga asíncrona de Google Maps API
+  // Desactivamos la carga de la API embebida de Google Maps para evitar el cartel de error comercial de Google.
+  // En su lugar, el conductor utilizará el botón de lanzamiento a la app nativa y el progreso de paradas local.
+  useEffect(() => {
+    setGoogleMapsLoaded(false);
+  }, []);
+
+  // Monitorear automáticamente el estado de conexión a internet real del navegador
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if ((window as any).google && (window as any).google.maps) {
-      setGoogleMapsLoaded(true);
-      return;
+    const handleOnline = () => {
+      setIsOffline(false);
+      localStorage.setItem(`offline_mode_${viaje.id}`, "false");
+      // Intentar sincronizar colas locales al recuperar cobertura
+      const gQueue = JSON.parse(localStorage.getItem(`queued_gastos_${viaje.id}`) || "[]");
+      const nQueue = JSON.parse(localStorage.getItem(`queued_novedades_${viaje.id}`) || "[]");
+      if (gQueue.length > 0 || nQueue.length > 0) {
+        handleSyncData(gQueue, nQueue);
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      localStorage.setItem(`offline_mode_${viaje.id}`, "true");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Inicializar estado según el navegador
+    if (!navigator.onLine) {
+      setIsOffline(true);
+      localStorage.setItem(`offline_mode_${viaje.id}`, "true");
     }
 
-    // Callback de inicialización para la API de Google Maps
-    (window as any).initGoogleMapsCallback = () => {
-      setGoogleMapsLoaded(true);
-    };
-
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initGoogleMapsCallback`;
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
     return () => {
-      delete (window as any).initGoogleMapsCallback;
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [viaje.id]);
 
   // Inicializar estados desde localStorage en el cliente
   useEffect(() => {
@@ -152,10 +176,15 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
       setLocalNovedades(JSON.parse(novedadesSaved));
     }
 
-    // Cargar progreso de paradas
-    const paradasSaved = localStorage.getItem(`completed_stops_${viaje.id}`);
-    if (paradasSaved) {
-      setCompletedStops(JSON.parse(paradasSaved));
+    // Cargar progreso de paradas (o reiniciar si el viaje vuelve a estar programado)
+    if (viaje.estado === "programado") {
+      localStorage.removeItem(`completed_stops_${viaje.id}`);
+      setCompletedStops([]);
+    } else {
+      const paradasSaved = localStorage.getItem(`completed_stops_${viaje.id}`);
+      if (paradasSaved) {
+        setCompletedStops(JSON.parse(paradasSaved));
+      }
     }
 
     // Si el viaje ya está en ruta, iniciar tracking GPS automáticamente
@@ -180,7 +209,7 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
       center: { lat: -6.2, lng: -79.2 }, // Centrado aproximado del norte del Perú
       mapTypeControl: false,
       streetViewControl: false,
-      fullscreenControl: false,
+      fullscreenControl: true,
     });
     googleMapInstance.current = map;
 
@@ -370,19 +399,24 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
     }
   };
 
-  // Evaluar cercanía a las paradas y auto-marcar
+  // Evaluar cercanía a las paradas y auto-marcar (con lógica de cascada)
   const checkProximity = (currentLat: number, currentLng: number) => {
     let stateChanged = false;
     const currentCompleted = JSON.parse(localStorage.getItem(`completed_stops_${viaje.id}`) || "[]");
     const updatedStops = [...currentCompleted];
 
-    paradas.forEach((stop) => {
+    paradas.forEach((stop, idx) => {
       const stopCoords = STOP_COORDINATES[stop];
       if (stopCoords && !updatedStops.includes(stop)) {
         const distance = getDistanceKm(currentLat, currentLng, stopCoords.lat, stopCoords.lng);
         if (distance < 2.0) { // Menos de 2 km de radio
-          updatedStops.push(stop);
-          stateChanged = true;
+          // Cascada: Marcar la parada actual y todas las anteriores del trayecto
+          for (let i = 0; i <= idx; i++) {
+            if (!updatedStops.includes(paradas[i])) {
+              updatedStops.push(paradas[i]);
+              stateChanged = true;
+            }
+          }
           setLastNotification(`📍 ¡Llegaste a la parada de control: ${stop}!`);
         }
       }
@@ -396,6 +430,10 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
 
   // Simular movimiento GPS (inyectar coordenadas de prueba)
   const triggerSimulatedLocation = (stopName: string) => {
+    if (viaje.estado !== "en_ruta") {
+      alert("⚠️ Debes iniciar el viaje antes de poder simular el GPS.");
+      return;
+    }
     const coords = STOP_COORDINATES[stopName];
     if (coords) {
       setCurrentCoords(coords);
@@ -481,6 +519,14 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
           if (res.success) {
             startGpsTracking();
             setCurrentCoords({ lat: latitude, lng: longitude });
+
+            // Auto-marcar la primera parada (Origen) por defecto al iniciar
+            if (paradas.length > 0) {
+              const initialStops = [paradas[0]];
+              setCompletedStops(initialStops);
+              localStorage.setItem(`completed_stops_${viaje.id}`, JSON.stringify(initialStops));
+            }
+
             checkProximity(latitude, longitude);
             router.refresh();
           } else {
@@ -493,6 +539,12 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
           alert("⚠️ Permiso de GPS denegado. El viaje se iniciará de todos modos, pero el conductor deberá marcar las paradas de forma manual en el checklist.");
           const res = await updateEstadoViaje(viaje.id, "en_ruta");
           if (res.success) {
+            // Auto-marcar la primera parada (Origen) por defecto al iniciar
+            if (paradas.length > 0) {
+              const initialStops = [paradas[0]];
+              setCompletedStops(initialStops);
+              localStorage.setItem(`completed_stops_${viaje.id}`, JSON.stringify(initialStops));
+            }
             router.refresh();
           } else {
             alert("Error al iniciar viaje en el servidor.");
@@ -605,13 +657,27 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
     }
   };
 
-  // Toggle de parada manual
+  // Toggle de parada manual con lógica de cascada para paradas anteriores
   const handleToggleParada = (stopName: string) => {
-    let updated: string[];
+    if (viaje.estado !== "en_ruta") {
+      alert("⚠️ Debes iniciar el viaje antes de registrar el progreso de las paradas.");
+      return;
+    }
+    const stopIndex = paradas.indexOf(stopName);
+    if (stopIndex === -1) return;
+
+    let updated = [...completedStops];
+
     if (completedStops.includes(stopName)) {
-      updated = completedStops.filter(s => s !== stopName);
+      // Si la desmarcamos, removemos solo esa parada
+      updated = updated.filter(s => s !== stopName);
     } else {
-      updated = [...completedStops, stopName];
+      // Si la marcamos, agregamos esa parada y todas las anteriores del trayecto de forma automática
+      for (let i = 0; i <= stopIndex; i++) {
+        if (!updated.includes(paradas[i])) {
+          updated.push(paradas[i]);
+        }
+      }
     }
     setCompletedStops(updated);
     localStorage.setItem(`completed_stops_${viaje.id}`, JSON.stringify(updated));
@@ -626,7 +692,7 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
   const allNovedades = [...(viaje.bitacoras || []), ...localNovedades];
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20 px-1 sm:px-0">
       
       {/* Cabecera con Botón de Señal */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -644,7 +710,7 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
 
         {/* Simulador Offline */}
         {mounted && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Indicador GPS */}
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm ${
               gpsStatus === "activo"
@@ -675,17 +741,6 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
                 </>
               )}
             </div>
-            
-            <button
-              onClick={toggleOfflineMode}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors shadow-sm ${
-                isOffline
-                  ? "bg-slate-800 text-white hover:bg-slate-700 border-slate-800"
-                  : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
-              }`}
-            >
-              {isOffline ? "Conectar Señal" : "Perder Señal"}
-            </button>
           </div>
         )}
       </div>
@@ -752,20 +807,20 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
       )}
 
       {/* Tarjeta de Resumen */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
         {viaje.estado === "en_ruta" && (
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 animate-pulse" />
         )}
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#f07639]/10 text-[#f07639] flex items-center justify-center">
-              <Bus className="w-7 h-7" />
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-[#f07639]/10 text-[#f07639] flex items-center justify-center shrink-0">
+              <Bus className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <p className="text-2xl font-extrabold text-slate-800">
-                {viaje.ruta.origen.nombre} <span className="text-slate-300 mx-2">→</span> {viaje.ruta.destino.nombre}
+            <div className="min-w-0">
+              <p className="text-base sm:text-2xl font-extrabold text-slate-800 truncate">
+                {viaje.ruta.origen.nombre} <span className="text-slate-300 mx-1 sm:mx-2">→</span> {viaje.ruta.destino.nombre}
               </p>
-              <p className="text-slate-500 font-medium">Bus Placa: <span className="text-slate-700 font-bold">{viaje.bus.placa}</span></p>
+              <p className="text-slate-500 font-medium text-xs sm:text-base">Bus Placa: <span className="text-slate-700 font-bold">{viaje.bus.placa}</span></p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -810,7 +865,7 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
-            className={`whitespace-nowrap flex items-center px-5 py-3 rounded-xl font-bold text-sm transition-all ${
+            className={`whitespace-nowrap flex items-center px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${
               activeTab === t.id 
                 ? "bg-slate-800 text-white shadow-md" 
                 : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-200"
@@ -823,7 +878,7 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
       </div>
 
       {/* Contenido Tabs */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-100">
         
         {activeTab === "ruta" && (
           <div className="space-y-6">
@@ -849,81 +904,121 @@ export default function ViajeDetalleConductorClient({ viaje, conductorId }: { vi
               </div>
             </div>
 
-            {/* Google Map real interactivo (En línea) o Fallback SVG (Offline) */}
+            {/* Progreso y Paradas del Viaje */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-sm font-extrabold text-slate-600 uppercase tracking-wider">
-                  {isOffline ? "Mapa de Progreso Offline (Doble Cobertura)" : "Mapa de Ruta en Tiempo Real (Google Maps)"}
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                  Progreso y Paradas del Viaje
                 </h3>
-                {mounted && !isOffline && (
-                  <span className="text-[10px] bg-green-150/40 text-green-700 font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                    Capa de Tráfico Activa
-                  </span>
-                )}
               </div>
               
-              {/* Contenedor del Mapa */}
-              <div className="relative w-full h-[360px] overflow-hidden bg-slate-100 border border-slate-200 rounded-3xl shadow-inner">
-                {/* Fallback Offline (SVG) */}
-                {isOffline && (
-                  <div className="absolute inset-0 flex flex-col justify-center items-center p-6 bg-slate-50 animate-fadeIn">
-                    <svg viewBox="0 0 500 80" className="w-full max-w-lg mb-6">
-                      <line x1="40" y1="40" x2="460" y2="40" stroke="#e2e8f0" strokeWidth="4" strokeLinecap="round" />
-                      <line 
-                        x1="40" 
-                        y1="40" 
-                        x2={40 + (420 * progressPct) / 100} 
-                        y2="40" 
-                        stroke="#f07639" 
-                        strokeWidth="4" 
-                        strokeLinecap="round" 
-                        className="transition-all duration-500" 
-                      />
-                      {paradas.map((p, idx) => {
-                        const x = 40 + (420 * idx) / (paradas.length - 1);
-                        const isPassed = completedStops.includes(p);
-                        return (
-                          <g key={p}>
-                            <circle 
-                              cx={x} 
-                              cy="40" 
-                              r="10" 
-                              fill={isPassed ? "#f07639" : "#ffffff"} 
-                              stroke={isPassed ? "#f07639" : "#cbd5e1"} 
-                              strokeWidth="3" 
-                              className="transition-all duration-300" 
-                            />
-                            <text 
-                              x={x} 
-                              y="20" 
-                              textAnchor="middle" 
-                              className="text-[9px] font-black text-slate-600 uppercase fill-current tracking-tight"
-                            >
-                              {p}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider text-center">
-                      Visualización Offline de Paradas de Control
-                    </p>
-                  </div>
-                )}
+              {/* Contenedor del Mapa (Gráfico SVG interactivo de paradas) */}
+              <div className="relative w-full h-[220px] sm:h-[260px] overflow-hidden bg-slate-50 border border-slate-200/60 rounded-2xl sm:rounded-3xl shadow-inner flex flex-col justify-center items-center p-4 sm:p-6 animate-fadeIn">
+                <svg viewBox="0 0 500 80" className="w-full max-w-lg mb-4">
+                  <line x1="40" y1="40" x2="460" y2="40" stroke="#e2e8f0" strokeWidth="4" strokeLinecap="round" />
+                  <line 
+                    x1="40" 
+                    y1="40" 
+                    x2={40 + (420 * progressPct) / 100} 
+                    y2="40" 
+                    stroke="#f07639" 
+                    strokeWidth="4" 
+                    strokeLinecap="round" 
+                    className="transition-all duration-500" 
+                  />
+                  {paradas.map((p, idx) => {
+                    const x = 40 + (420 * idx) / (paradas.length - 1);
+                    const isPassed = completedStops.includes(p);
+                    return (
+                      <g key={p}>
+                        <circle 
+                          cx={x} 
+                          cy="40" 
+                          r="10" 
+                          fill={isPassed ? "#f07639" : "#ffffff"} 
+                          stroke={isPassed ? "#f07639" : "#cbd5e1"} 
+                          strokeWidth="3" 
+                          className="transition-all duration-300" 
+                        />
+                        <text 
+                          x={x} 
+                          y="20" 
+                          textAnchor="middle" 
+                          className="text-[9px] font-black text-slate-600 uppercase fill-current tracking-tight"
+                        >
+                          {p}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+                <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider text-center">
+                  Visualización de Paradas de Control ({completedStops.length} de {paradas.length} completadas)
+                </p>
+              </div>
 
-                {/* Google Map real (Visible en línea) */}
-                <div 
-                  ref={mapContainerRef} 
-                  className={`w-full h-full ${isOffline ? "hidden" : "block"}`}
-                />
-
-                {/* Mensaje de carga inicial de Google Maps */}
-                {!googleMapsLoaded && !isOffline && (
-                  <div className="absolute inset-0 flex flex-col justify-center items-center bg-slate-100 text-slate-500 gap-2">
-                    <Clock className="w-8 h-8 animate-spin text-[#f07639]" />
-                    <p className="text-xs font-bold">Cargando Google Maps API...</p>
+              {/* Checklist Interactivo de Paradas (Solo visible cuando no hay señal de GPS activa) */}
+              {mounted && gpsStatus !== "activo" && (
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 sm:p-5 space-y-3">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Checklist de Paradas (Control Manual)</h4>
+                  <p className="text-[11px] text-slate-400 font-medium">Presiona sobre una parada para marcarla de forma manual ya que el GPS está inactivo o sin cobertura.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {paradas.map((p, idx) => {
+                      const isPassed = completedStops.includes(p);
+                      const isDisabled = viaje.estado !== "en_ruta";
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => handleToggleParada(p)}
+                          className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all ${
+                            isDisabled
+                              ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60"
+                              : isPassed
+                              ? "bg-green-50/70 border-green-200 text-green-800"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] font-bold ${
+                              isDisabled
+                                ? "border-slate-200 bg-slate-100 text-transparent"
+                                : isPassed
+                                ? "bg-green-500 border-green-500 text-white"
+                                : "border-slate-300 text-transparent"
+                            }`}>
+                              ✓
+                            </span>
+                            <span>{idx + 1}. {p}</span>
+                          </div>
+                          <span className={`text-[9px] uppercase px-2 py-0.5 rounded font-black ${
+                            isDisabled
+                              ? "bg-slate-100 text-slate-400"
+                              : isPassed
+                              ? "bg-green-150/40 text-green-700"
+                              : "bg-slate-100 text-slate-400"
+                          }`}>
+                            {isPassed ? "Completado" : "Pendiente"}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+              )}
+
+              {/* Botón para abrir ruta en la app de Google Maps externa */}
+              <div className="pt-2">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(viaje.ruta.origen.nombre + ", Peru")}&destination=${encodeURIComponent(viaje.ruta.destino.nombre + ", Peru")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#f07639] hover:bg-[#e06528] text-white py-3 px-4 rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-md shadow-[#f07639]/10 hover:shadow-lg transition-all active:scale-[0.99] duration-200"
+                >
+                  <Navigation className="w-4 h-4 rotate-45" />
+                  Abrir Ruta en App de Google Maps (GPS)
+                </a>
               </div>
             </div>
           </div>
