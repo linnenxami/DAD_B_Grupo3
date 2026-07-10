@@ -236,7 +236,18 @@ export default function ViajeDetalleOperarioClient({
           }
         ).catch((err: any) => {
           console.error("Error starting html5Qrcode:", err);
-          alert("Error de permisos: Asegúrate de otorgar acceso a la cámara de tu dispositivo.");
+          const msg = String(err).toLowerCase();
+          if (msg.includes("not supported") || msg.includes("mediadevices")) {
+            setScanResult({
+              success: false,
+              message: "⚠️ Cámara no disponible: La cámara solo funciona en HTTPS (usa la URL de ngrok) o en localhost. Usa el campo de texto para ingresar el código QR manualmente.",
+            });
+          } else {
+            setScanResult({
+              success: false,
+              message: "Error de permisos: Asegúrate de otorgar acceso a la cámara de tu dispositivo.",
+            });
+          }
           setCameraActive(false);
         });
       } catch (e) {
