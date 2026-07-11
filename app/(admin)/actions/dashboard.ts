@@ -42,6 +42,117 @@ export async function getDashboardStats() {
       }),
     ]);
 
+    // 1. Calcular ingresos de pasajes hoy
+    const pasajesHoy = await prisma.pasaje.findMany({
+      where: {
+        fecha_compra: {
+          gte: hoy,
+          lt: manana,
+        },
+      },
+      select: { precio: true },
+    });
+    const ingresosPasajes = pasajesHoy.reduce((acc, p) => acc + Number(p.precio), 0);
+
+    // 2. Calcular ingresos de encomiendas hoy
+    const encomiendasHoy = await prisma.encomienda.findMany({
+      where: {
+        created_at: {
+          gte: hoy,
+          lt: manana,
+        },
+      },
+      select: { precio: true },
+    });
+    const ingresosEncomiendas = encomiendasHoy.reduce((acc, e) => acc + Number(e.precio), 0);
+
+    const ingresosHoy = ingresosPasajes + ingresosEncomiendas;
+
+    // 3. Obtener estado de la flota
+    const busesTaller = await prisma.bus.count({
+      where: {
+        novedades: {
+          some: {
+            estado: "pendiente",
+          },
+        },
+      },
+    });
+
+    const viajesHoy = await prisma.viaje.findMany({
+      where: {
+        fecha_salida: {
+          gte: hoy,
+          lt: manana,
+        },
+        estado: {
+          in: ["programado", "en_ruta"],
+        },
+      },
+      select: {
+        bus_id: true,
+      },
+    });
+    const busesEnRutaIds = new Set(viajesHoy.map((v) => v.bus_id.toString()));
+    const busesEnRuta = busesEnRutaIds.size;
+
+    const busesDisponibles = Math.max(0, totalBuses - busesTaller - busesEnRuta);
+
+    // 4. Obtener próximas salidas hoy
+    const ahora = new Date();
+    const proximasSalidas = await prisma.viaje.findMany({
+      where: {
+        fecha_salida: {
+          gte: ahora,
+          lt: manana,
+        },
+        estado: "programado",
+      },
+      include: {
+        ruta: {
+          include: {
+            origen: { select: { nombre: true } },
+            destino: { select: { nombre: true } },
+          },
+        },
+        bus: {
+          select: { placa: true, capacidad: true },
+        },
+        asientos_viaje: {
+          select: { estado: true },
+        },
+      },
+      orderBy: {
+        fecha_salida: "asc",
+      },
+      take: 3,
+    });
+
+    const proximasSalidasMapeadas = proximasSalidas.map((v) => {
+      const totalAsientos = v.bus.capacidad || 40;
+      const ocupados = v.asientos_viaje.filter((a) => a.estado === "ocupado").length;
+      const porcentajeOcupacion = Math.round((ocupados / totalAsientos) * 100);
+
+      const d = new Date(v.fecha_salida);
+      const timeStr = d.toLocaleTimeString("en-US", {
+        timeZone: "UTC",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+      return {
+        id: v.id.toString(),
+        origen: v.ruta.origen.nombre,
+        destino: v.ruta.destino.nombre,
+        hora: timeStr,
+        placa: v.bus.placa,
+        porcentajeOcupacion,
+        asientosOcupados: ocupados,
+        totalAsientos,
+      };
+    });
+
     return {
       success: true,
       data: {
@@ -49,6 +160,13 @@ export async function getDashboardStats() {
         totalSucursales,
         viajesActivosHoy,
         pasajesVendidosHoy,
+        ingresosHoy,
+        flota: {
+          disponibles: busesDisponibles,
+          enRuta: busesEnRuta,
+          taller: busesTaller,
+        },
+        proximasSalidas: proximasSalidasMapeadas,
       },
     };
   } catch (error) {

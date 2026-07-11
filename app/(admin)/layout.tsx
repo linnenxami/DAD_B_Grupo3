@@ -18,6 +18,8 @@ import {
   MessageSquareWarning,
   User,
   Globe,
+  BarChart3,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import NotificacionesDropdown from "./admin/NotificacionesDropdown";
@@ -46,8 +48,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Reclamaciones", href: "/admin/reclamaciones", icon: MessageSquareWarning, roles: ["admin"] },
   ];
 
+  const reportsNav = [
+    { name: "Reporte de Ventas", href: "/admin/reportes", icon: BarChart3, roles: ["admin"] },
+    { name: "Reporte de Operaciones", href: "/admin/reportes/operaciones", icon: ClipboardList, roles: ["admin"] },
+  ];
+
   const getPageTitle = () => {
-    const all = [...mainNav, ...managementNav];
+    const all = [...mainNav, ...managementNav, ...reportsNav];
     const current = all.find(item => item.href === pathname);
     return current?.name || "Panel de Control";
   };
@@ -96,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* ========= SIDEBAR ========= */}
       <div className={`
-        fixed md:sticky top-0 left-0 z-50 h-screen w-[260px] flex flex-col transition-transform duration-300
+        fixed md:sticky top-0 left-0 z-50 h-screen w-[260px] flex flex-col shrink-0 transition-transform duration-300
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
         {/* Sidebar background with gradient */}
@@ -145,28 +152,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
               </div>
             )}
+
+            {/* Reportes */}
+            {reportsNav.filter(item => item.roles.includes(userRole)).length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center px-4 mb-3">
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                  <span className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Reportes</span>
+                  <div className="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent" />
+                </div>
+                <div className="space-y-1">
+                  {reportsNav.filter(item => item.roles.includes(userRole)).map(renderNavItem)}
+                </div>
+              </div>
+            )}
           </nav>
 
           {/* User Panel at Bottom */}
           <div className="p-4 border-t border-white/[0.06]">
-            <div className="bg-white/[0.04] rounded-xl p-3">
-              <div className="flex items-center mb-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f07639]/20 to-[#f07639]/10 border border-[#f07639]/20 flex items-center justify-center text-[#f07639] font-black text-sm">
-                  {session?.user?.name?.charAt(0) || "A"}
-                </div>
-                <div className="ml-3 overflow-hidden flex-1">
-                  <p className="text-[13px] leading-tight font-bold text-white truncate">{session?.user?.name}</p>
-                  <p className="text-[11px] text-slate-400 capitalize font-medium mt-0.5">{session?.user?.role}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full flex items-center justify-center px-3 py-2 bg-white/[0.04] hover:bg-red-500/15 text-slate-400 hover:text-red-400 border border-white/[0.06] hover:border-red-500/20 rounded-lg transition-all duration-200 text-[12px] font-bold group"
-              >
-                <LogOut className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-0.5 transition-transform" />
-                Cerrar Sesión
-              </button>
-            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-full flex items-center justify-center px-3 py-2.5 bg-white/[0.02] hover:bg-red-500/10 text-slate-400 hover:text-red-400 border border-white/[0.04] hover:border-red-500/25 rounded-xl transition-all duration-200 text-[12px] font-bold group"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-0.5 transition-transform" />
+              Cerrar Sesión
+            </button>
           </div>
         </div>
       </div>
