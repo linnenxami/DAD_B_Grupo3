@@ -1,8 +1,9 @@
 import { Target, Lightbulb, MapPin, Phone } from "lucide-react";
+import Image from "next/image";
 
 export default function QuienesSomos() {
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/15 relative overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-transparent relative overflow-hidden">
       {/* Círculos decorativos de fondo con desenfoque (Glow Effect) */}
       <div className="absolute top-[40%] -left-36 w-[400px] h-[400px] bg-orange-200/20 rounded-full filter blur-3xl pointer-events-none z-0"></div>
       <div className="absolute bottom-[20%] -right-36 w-[400px] h-[400px] bg-amber-100/20 rounded-full filter blur-3xl pointer-events-none z-0"></div>
@@ -14,17 +15,16 @@ export default function QuienesSomos() {
           <div className="absolute -top-24 -left-24 w-80 h-80 bg-white/10 rounded-full filter blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-black/10 rounded-full filter blur-3xl pointer-events-none"></div>
           
-          {/* Patrón geométrico sutil en SVG */}
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-          </div>
+          {/* Imagen de fondo oficial de El Cumbe en el banner */}
+          <div 
+            className="absolute inset-0 opacity-[0.25] pointer-events-none" 
+            style={{
+              backgroundImage: "url('/imagen-centro-ayuda.webp')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }} 
+          />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight drop-shadow-md">
@@ -75,11 +75,13 @@ export default function QuienesSomos() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Sucursal Chiclayo */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/30 hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
-              <div className="w-full h-48 overflow-hidden">
-                <img 
-                  src="/chiclayo.png" 
+              <div className="relative w-full h-48 overflow-hidden">
+                <Image 
+                  src="/chiclayo.webp" 
                   alt="Sucursal Chiclayo" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <div className="p-5 bg-white relative z-10 border-t border-gray-50 flex flex-col gap-3 text-left">
@@ -97,11 +99,13 @@ export default function QuienesSomos() {
 
             {/* Sucursal Jaén */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/30 hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
-              <div className="w-full h-48 overflow-hidden">
-                <img 
-                  src="/jaen.png" 
+              <div className="relative w-full h-48 overflow-hidden">
+                <Image 
+                  src="/jaen.webp" 
                   alt="Sucursal Jaén" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <div className="p-5 bg-white relative z-10 border-t border-gray-50 flex flex-col gap-3 text-left">
@@ -119,11 +123,13 @@ export default function QuienesSomos() {
 
             {/* Sucursal Cajamarca */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/30 hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
-              <div className="w-full h-48 overflow-hidden">
-                <img 
-                  src="/cajamarca.png" 
+              <div className="relative w-full h-48 overflow-hidden">
+                <Image 
+                  src="/cajamarca.webp" 
                   alt="Sucursal Cajamarca" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <div className="p-5 bg-white relative z-10 border-t border-gray-50 flex flex-col gap-3 text-left">
@@ -141,11 +147,13 @@ export default function QuienesSomos() {
 
             {/* Sucursal Trujillo */}
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/30 hover:-translate-y-1.5 transition-all duration-300 group cursor-pointer flex flex-col justify-between">
-              <div className="w-full h-48 overflow-hidden">
-                <img 
-                  src="/trujillo.png" 
+              <div className="relative w-full h-48 overflow-hidden">
+                <Image 
+                  src="/trujillo.webp" 
                   alt="Sucursal Trujillo" 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <div className="p-5 bg-white relative z-10 border-t border-gray-50 flex flex-col gap-3 text-left">

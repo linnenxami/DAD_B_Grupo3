@@ -115,3 +115,49 @@ export async function eliminarRuta(id: string | number) {
     return { success: false, error: error.message || "Error al eliminar ruta" };
   }
 }
+
+export async function actualizarRuta(id: string | number, data: any) {
+  try {
+    await verifyAdminRole();
+    const validData = RutaSchema.parse(data);
+
+    const origenId = parseId(validData.origen_id);
+    const destinoId = parseId(validData.destino_id);
+
+    if (origenId === destinoId) {
+      return { success: false, error: "El origen y el destino no pueden ser la misma sucursal." };
+    }
+
+    // Validar si al cambiar origen/destino coincide con otra ruta existente (excluyendo la ruta actual)
+    const rutaExistente = await prisma.ruta.findFirst({
+      where: { 
+        origen_id: origenId, 
+        destino_id: destinoId,
+        NOT: { id: parseId(id) }
+      }
+    });
+
+    if (rutaExistente) {
+      return { success: false, error: "Ya existe otra ruta con ese origen y destino." };
+    }
+
+    const rutaActualizada = await prisma.ruta.update({
+      where: { id: parseId(id) },
+      data: {
+        origen_id: origenId,
+        destino_id: destinoId,
+        duracion_estimada_minutos: validData.duracion_estimada_minutos,
+        precio_base: validData.precio_base,
+      },
+    });
+
+    revalidatePath("/admin/rutas");
+    return { success: true, data: serializeBigInt(rutaActualizada) };
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.issues[0].message };
+    }
+    return { success: false, error: error.message || "Error al actualizar ruta" };
+  }
+}
+

@@ -10,7 +10,7 @@ import QRCode from "qrcode";
 import Link from "next/link";
 
 function PerfilContent() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") || "datos";
@@ -25,6 +25,7 @@ function PerfilContent() {
 
   // Campos del formulario
   const [nombre, setNombre] = useState("");
+  const [correo, setCorreo] = useState("");
   const [dni, setDni] = useState("");
   const [telefono, setTelefono] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -62,6 +63,7 @@ function PerfilContent() {
         setProfile(data);
         const fullName = data.persona ? `${data.persona.nombres} ${data.persona.apellidos}`.trim() : "";
         setNombre(fullName);
+        setCorreo(data.correo || "");
         setDni(data.persona?.dni || "");
         setTelefono(data.persona?.telefono || "");
       }
@@ -119,6 +121,11 @@ function PerfilContent() {
       return;
     }
 
+    if (!correo.trim()) {
+      setError("El correo electrónico es requerido.");
+      return;
+    }
+
     if (newPassword && newPassword.trim().length > 0 && newPassword.trim().length < 6) {
       setError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
@@ -138,6 +145,7 @@ function PerfilContent() {
       setSaving(true);
       const res = await updateClienteProfile(session!.user!.email!, {
         nombre,
+        correo: correo || undefined,
         dni: dni || undefined,
         telefono: telefono || undefined,
         newPassword: newPassword || undefined,
@@ -147,6 +155,19 @@ function PerfilContent() {
         setSuccessMsg("¡Tus datos se actualizaron con éxito!");
         setNewPassword(""); // Limpiar la contraseña si se actualizó
         setIsEditing(false); // Volver al modo lectura
+
+        // Actualizar sesión de Next-Auth en el cliente
+        if (session) {
+          await update({
+            ...session,
+            user: {
+              ...session.user,
+              email: correo.trim().toLowerCase(),
+              name: nombre
+            }
+          });
+        }
+
         await loadProfile();
       } else {
         setError(res.error || "Ocurrió un error al guardar los datos.");
@@ -201,14 +222,14 @@ function PerfilContent() {
     );
   }
 
-  if (status === "unauthenticated" || session?.user?.role !== "cliente") {
+  if (status === "unauthenticated" || !session?.user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-3xl shadow-xl text-center border border-gray-100">
           <User className="mx-auto h-16 w-16 text-[#f07639]" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Inicia sesión como cliente</h2>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Inicia sesión en tu cuenta</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Para acceder a tu perfil y revisar tus pasajes, debes estar autenticado como cliente.
+            Para acceder a tu perfil y revisar tu información, debes iniciar sesión en el sistema.
           </p>
           <div className="mt-8 space-y-4">
             <Link
@@ -240,14 +261,14 @@ function PerfilContent() {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
-                {profile?.persona ? `${profile.persona.nombres} ${profile.persona.apellidos}` : "Cliente"}
+                {profile?.persona ? `${profile.persona.nombres} ${profile.persona.apellidos}` : "Usuario"}
               </h1>
               <p className="text-sm text-gray-500 font-medium flex items-center justify-center sm:justify-start gap-1">
                 <Mail size={14} className="text-gray-400" />
                 {profile?.correo}
               </p>
-              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#f07639]">
-                Cliente Registrado
+              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-[#f07639] uppercase">
+                {profile?.rol === "conductor" ? "Conductor" : profile?.rol === "operario" ? "Operario" : profile?.rol === "admin" ? "Administrador" : "Cliente"}
               </span>
             </div>
           </div>
@@ -287,28 +308,32 @@ function PerfilContent() {
             <User size={18} />
             Mis Datos Personales
           </button>
-          <button
-            onClick={() => setActiveTab("tickets")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold rounded-lg transition-all ${
-              activeTab === "tickets"
-                ? "bg-[#f07639] text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Ticket size={18} />
-            Mis Pasajes ({profile?.pasajes?.length || 0})
-          </button>
-          <button
-            onClick={() => setActiveTab("reclamaciones")}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold rounded-lg transition-all ${
-              activeTab === "reclamaciones"
-                ? "bg-[#f07639] text-white shadow-sm"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <MessageSquareWarning size={18} />
-            Mis Reclamos ({profile?.persona?.reclamos?.length || 0})
-          </button>
+          {profile?.rol === "cliente" && (
+            <>
+              <button
+                onClick={() => setActiveTab("tickets")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold rounded-lg transition-all ${
+                  activeTab === "tickets"
+                    ? "bg-[#f07639] text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Ticket size={18} />
+                Mis Pasajes ({profile?.pasajes?.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveTab("reclamaciones")}
+                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-bold rounded-lg transition-all ${
+                  activeTab === "reclamaciones"
+                    ? "bg-[#f07639] text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <MessageSquareWarning size={18} />
+                Mis Reclamos ({profile?.persona?.reclamos?.length || 0})
+              </button>
+            </>
+          )}
         </div>
 
         {/* CONTENIDO DE LA PESTAÑA: DATOS */}
@@ -342,7 +367,7 @@ function PerfilContent() {
               </div>
             )}
 
-            <form onSubmit={handleSave} className="space-y-6">
+             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Nombre */}
                 <div>
@@ -353,11 +378,49 @@ function PerfilContent() {
                     </div>
                     <input
                       type="text"
-                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
+                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
                       value={nombre}
                       onChange={(e) => setNombre(e.target.value)}
                       placeholder="Juan Pérez"
                       required
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                {/* Correo Electrónico */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Correo Electrónico</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <Mail className={`h-5 w-5 ${isEditing ? 'text-gray-400' : 'text-gray-300'}`} />
+                    </div>
+                    <input
+                      type="email"
+                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
+                      value={correo}
+                      onChange={(e) => setCorreo(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      required
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                {/* DNI */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">DNI</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                      <CreditCard className={`h-5 w-5 ${isEditing ? 'text-gray-400' : 'text-gray-300'}`} />
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={8}
+                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
+                      value={dni}
+                      onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))}
+                      placeholder="12345678"
                       disabled={!isEditing}
                     />
                   </div>
@@ -373,7 +436,7 @@ function PerfilContent() {
                     <input
                       type="text"
                       maxLength={9}
-                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
+                      className={`block w-full pl-11 pr-4 py-3.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl text-gray-800 ${!isEditing && 'bg-gray-100/50 cursor-not-allowed text-gray-500'}`}
                       value={telefono}
                       onChange={(e) => setTelefono(e.target.value.replace(/\D/g, ""))}
                       placeholder="987654321"
@@ -392,7 +455,7 @@ function PerfilContent() {
                       </div>
                       <input
                         type="password"
-                        className="block w-full pl-11 pr-4 py-3.5 text-sm border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl bg-white text-gray-800 placeholder-gray-300"
+                        className="block w-full pl-11 pr-4 py-3.5 text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#f07639]/20 focus:border-[#f07639] rounded-xl bg-white text-gray-800 placeholder-gray-300"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Mínimo 6 caracteres"

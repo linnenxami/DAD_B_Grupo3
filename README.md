@@ -16,8 +16,8 @@ Sigue estos pasos para configurar el proyecto en tu máquina:
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/IlderDevUSS/app_WebCumbe
-cd app_WebCumbe
+git clone https://github.com/user02esistemas/DAD_B_Grupo3.git
+cd DAD_B_Grupo3
 ```
 
 ### 2. Instalar dependencias

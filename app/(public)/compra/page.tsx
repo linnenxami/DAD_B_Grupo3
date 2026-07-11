@@ -782,7 +782,7 @@ function CompraContent() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 via-white to-orange-50/15 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden min-h-[85vh]">
+    <div className="bg-transparent py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden min-h-[85vh]">
       {/* Círculos decorativos de fondo con desenfoque (Glow Effect) */}
       <div className="absolute top-[10%] -left-36 w-96 h-96 bg-orange-200/20 rounded-full filter blur-3xl pointer-events-none z-0"></div>
       <div className="absolute bottom-[20%] -right-36 w-96 h-96 bg-amber-100/20 rounded-full filter blur-3xl pointer-events-none z-0"></div>

@@ -43,7 +43,9 @@ function LoginContent() {
         if (session?.user?.role === "admin" || session?.user?.role === "operario") {
           window.location.href = "/admin";
         } else {
-          window.location.href = callbackUrl;
+          // Validar que la redirección sea local y segura para evitar Open Redirect
+          const isSafeUrl = callbackUrl.startsWith("/") && !callbackUrl.startsWith("//");
+          window.location.href = isSafeUrl ? callbackUrl : "/";
         }
       }
     } catch (err) {

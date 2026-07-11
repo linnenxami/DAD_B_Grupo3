@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Edit2, Trash2, MapPin, Building } from "lucide-react";
 import { crearSucursal, actualizarSucursal, eliminarSucursal } from "../../actions/sucursales";
 
@@ -15,6 +16,12 @@ type Sucursal = {
 export default function SucursalClient({ initialData }: { initialData: Sucursal[] }) {
   const [sucursales, setSucursales] = useState<Sucursal[]>(initialData);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ nombre: "", direccion: "" });
   const [isLoading, setIsLoading] = useState(false);
@@ -169,9 +176,15 @@ export default function SucursalClient({ initialData }: { initialData: Sucursal[
       </div>
 
       {/* Modal Formulario */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      {mounted && isModalOpen && createPortal(
+        <div 
+          onClick={handleCloseModal}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+          >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-bold text-gray-900">
                 {editingId ? "Editar Sucursal" : "Nueva Sucursal"}
@@ -238,7 +251,8 @@ export default function SucursalClient({ initialData }: { initialData: Sucursal[
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

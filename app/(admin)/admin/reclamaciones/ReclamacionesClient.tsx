@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useSession } from "next-auth/react";
 import { 
   MessageSquareWarning, 
   Search, 
@@ -15,7 +17,14 @@ import {
 import { updateReclamoEstado } from "@/app/(admin)/actions/reclamaciones";
 
 export default function ReclamacionesClient({ initialData }: { initialData: any[] }) {
+  const { data: session } = useSession();
   const [reclamos, setReclamos] = useState(initialData);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedReclamo, setSelectedReclamo] = useState<any>(null);
   
@@ -158,9 +167,15 @@ export default function ReclamacionesClient({ initialData }: { initialData: any[
       </div>
 
       {/* Modal */}
-      {isModalOpen && selectedReclamo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      {mounted && isModalOpen && selectedReclamo && createPortal(
+        <div 
+          onClick={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+          >
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <MessageSquareWarning className="w-5 h-5 text-[#f07639]" />
@@ -236,7 +251,9 @@ export default function ReclamacionesClient({ initialData }: { initialData: any[
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Respuesta Oficial (Admin)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">
+                    Respuesta Oficial ({session?.user?.name || "Admin"})
+                  </label>
                   <textarea
                     value={respuestaEdit}
                     onChange={(e) => setRespuestaEdit(e.target.value)}
@@ -270,7 +287,8 @@ export default function ReclamacionesClient({ initialData }: { initialData: any[
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

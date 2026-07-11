@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==========================================
@@ -12,29 +13,34 @@ datasource db {
 // ==========================================
 
 model Persona {
-  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  nombres    String    @db.VarChar(255)
-  apellidos  String    @db.VarChar(255)
-  dni        String    @unique @db.VarChar(15)
-  telefono   String?   @db.VarChar(20)
-  created_at DateTime? @default(now()) @db.Timestamp(0)
-  updated_at DateTime? @default(now()) @db.Timestamp(0)
+  id         BigInt    @id @default(autoincrement()) 
+  nombres    String    
+  apellidos  String    
+  dni        String    @unique 
+  telefono   String?   
+  created_at DateTime? @default(now()) 
+  updated_at DateTime? @default(now()) 
 
   usuario               Usuario?
   pasajes               Pasaje[]
   reclamos              Reclamo[]
   encomiendas_enviadas  Encomienda[] @relation("Remitente")
   encomiendas_recibidas Encomienda[] @relation("Destinatario")
+
+  viajes_como_conductor Viaje[]           @relation("Piloto")
+  gastos_registrados    GastoRuta[]
+  novedades_reportadas  NovedadMecanica[]
+  bitacoras_registradas BitacoraViaje[]
 }
 
 model Usuario {
-  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  persona_id BigInt    @unique @db.UnsignedBigInt
-  correo     String    @unique @db.VarChar(255)
-  contrasena String    @db.VarChar(255)
+  id         BigInt    @id @default(autoincrement()) 
+  persona_id BigInt    @unique 
+  correo     String    @unique 
+  contrasena String    
   rol        String    @default("cliente")
-  created_at DateTime? @default(now()) @db.Timestamp(0)
-  updated_at DateTime? @default(now()) @db.Timestamp(0)
+  created_at DateTime? @default(now()) 
+  updated_at DateTime? @default(now()) 
 
   persona              Persona            @relation(fields: [persona_id], references: [id], onDelete: Cascade)
   asientos_bloqueados  AsientoViaje[]
@@ -48,11 +54,11 @@ model Usuario {
 // ==========================================
 
 model Sucursal {
-  id         BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  nombre     String    @db.VarChar(100)
-  direccion  String?   @db.VarChar(255)
-  created_at DateTime? @default(now()) @db.Timestamp(0)
-  updated_at DateTime? @default(now()) @db.Timestamp(0)
+  id         BigInt    @id @default(autoincrement()) 
+  nombre     String    
+  direccion  String?   
+  created_at DateTime? @default(now()) 
+  updated_at DateTime? @default(now()) 
 
   rutas_origen        Ruta[]       @relation("RutaOrigen")
   rutas_destino       Ruta[]       @relation("RutaDestino")
@@ -61,28 +67,29 @@ model Sucursal {
 }
 
 model Bus {
-  id                    BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  placa                 String    @unique @db.VarChar(15)
-  marca                 String?   @db.VarChar(50)
+  id                    BigInt    @id @default(autoincrement()) 
+  placa                 String    @unique 
+  marca                 String?   
   capacidad             Int
   pisos                 Int       @default(1)
   asientos_piso_1       Int?
-  asientos_restringidos String?   @db.Text
-  imagenes              String?   @db.Text
-  created_at            DateTime? @default(now()) @db.Timestamp(0)
-  updated_at            DateTime? @default(now()) @db.Timestamp(0)
+  asientos_restringidos String?   
+  imagenes              String?   
+  created_at            DateTime? @default(now()) 
+  updated_at            DateTime? @default(now()) 
 
-  viajes Viaje[]
+  viajes    Viaje[]
+  novedades NovedadMecanica[]
 }
 
 model Ruta {
-  id                        BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  origen_id                 BigInt    @db.UnsignedBigInt
-  destino_id                BigInt    @db.UnsignedBigInt
+  id                        BigInt    @id @default(autoincrement()) 
+  origen_id                 BigInt    
+  destino_id                BigInt    
   duracion_estimada_minutos Int
-  precio_base               Decimal   @db.Decimal(8, 2)
-  created_at                DateTime? @default(now()) @db.Timestamp(0)
-  updated_at                DateTime? @default(now()) @db.Timestamp(0)
+  precio_base               Decimal   
+  created_at                DateTime? @default(now()) 
+  updated_at                DateTime? @default(now()) 
 
   origen  Sucursal @relation("RutaOrigen", fields: [origen_id], references: [id], onDelete: Cascade)
   destino Sucursal @relation("RutaDestino", fields: [destino_id], references: [id], onDelete: Cascade)
@@ -90,32 +97,38 @@ model Ruta {
 }
 
 model Viaje {
-  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  ruta_id       BigInt    @db.UnsignedBigInt
-  bus_id        BigInt    @db.UnsignedBigInt
-  fecha_salida  DateTime  @db.DateTime(0)
-  fecha_llegada DateTime? @db.DateTime(0)
+  id            BigInt    @id @default(autoincrement()) 
+  ruta_id       BigInt    
+  bus_id        BigInt    
+  conductor_id  BigInt?   
+  fecha_salida  DateTime  
+  fecha_llegada DateTime? 
   estado        String    @default("programado")
-  created_at    DateTime? @default(now()) @db.Timestamp(0)
-  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+  created_at    DateTime? @default(now()) 
+  updated_at    DateTime? @default(now()) 
 
-  ruta           Ruta           @relation(fields: [ruta_id], references: [id], onDelete: Cascade)
-  bus            Bus            @relation(fields: [bus_id], references: [id], onDelete: Cascade)
+  ruta           Ruta              @relation(fields: [ruta_id], references: [id], onDelete: Cascade)
+  bus            Bus               @relation(fields: [bus_id], references: [id], onDelete: Cascade)
+  conductor      Persona?          @relation("Piloto", fields: [conductor_id], references: [id], onDelete: SetNull)
   asientos_viaje AsientoViaje[]
   encomiendas    Encomienda[]
   pagos          Pago[]
+  gastos         GastoRuta[]
+  novedades      NovedadMecanica[]
+  alertas        AlertaCentral[]
+  bitacoras      BitacoraViaje[]
 }
 
 model AsientoViaje {
-  id                       BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  viaje_id                 BigInt    @db.UnsignedBigInt
+  id                       BigInt    @id @default(autoincrement()) 
+  viaje_id                 BigInt    
   numero_asiento           Int
   piso                     Int       @default(1)
   estado                   String    @default("disponible")
-  bloqueado_por_usuario_id BigInt?   @db.UnsignedBigInt
-  bloqueado_en             DateTime? @db.Timestamp(0)
-  created_at               DateTime? @default(now()) @db.Timestamp(0)
-  updated_at               DateTime? @default(now()) @db.Timestamp(0)
+  bloqueado_por_usuario_id BigInt?   
+  bloqueado_en             DateTime? 
+  created_at               DateTime? @default(now()) 
+  updated_at               DateTime? @default(now()) 
 
   viaje                 Viaje    @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
   bloqueado_por_usuario Usuario? @relation(fields: [bloqueado_por_usuario_id], references: [id], onDelete: SetNull)
@@ -130,17 +143,18 @@ model AsientoViaje {
 // ==========================================
 
 model Pasaje {
-  id               BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  asiento_viaje_id BigInt @unique @db.UnsignedBigInt
+  id               BigInt @id @default(autoincrement()) 
+  asiento_viaje_id BigInt @unique 
 
-  persona_id   BigInt  @db.UnsignedBigInt // El pasajero físico
-  comprador_id BigInt? @db.UnsignedBigInt // Usuario web opcional
+  persona_id   BigInt   // El pasajero físico
+  comprador_id BigInt?  // Usuario web opcional
 
-  precio       Decimal   @db.Decimal(8, 2)
-  fecha_compra DateTime? @default(now()) @db.Timestamp(0)
-  codigo_qr    String?   @unique @db.VarChar(255)
-  created_at   DateTime? @default(now()) @db.Timestamp(0)
-  updated_at   DateTime? @default(now()) @db.Timestamp(0)
+  precio       Decimal   
+  fecha_compra DateTime? @default(now()) 
+  codigo_qr    String?   @unique 
+  abordado     Boolean   @default(false)
+  created_at   DateTime? @default(now()) 
+  updated_at   DateTime? @default(now()) 
 
   asiento_viaje AsientoViaje @relation(fields: [asiento_viaje_id], references: [id], onDelete: Cascade)
   pasajero      Persona      @relation(fields: [persona_id], references: [id], onDelete: Cascade)
@@ -148,21 +162,21 @@ model Pasaje {
 }
 
 model Encomienda {
-  id                 BigInt @id @default(autoincrement()) @db.UnsignedBigInt
-  codigo_seguimiento String @unique @db.VarChar(50)
+  id                 BigInt @id @default(autoincrement()) 
+  codigo_seguimiento String @unique 
 
-  remitente_id    BigInt @db.UnsignedBigInt
-  destinatario_id BigInt @db.UnsignedBigInt
+  remitente_id    BigInt 
+  destinatario_id BigInt 
 
-  origen_id   BigInt    @db.UnsignedBigInt
-  destino_id  BigInt    @db.UnsignedBigInt
-  viaje_id    BigInt?   @db.UnsignedBigInt
-  peso_kg     Decimal   @db.Decimal(5, 2)
-  descripcion String?   @db.Text
-  precio      Decimal   @db.Decimal(8, 2)
+  origen_id   BigInt    
+  destino_id  BigInt    
+  viaje_id    BigInt?   
+  peso_kg     Decimal   
+  descripcion String?   
+  precio      Decimal   
   estado      String    @default("recepcionado")
-  created_at  DateTime? @default(now()) @db.Timestamp(0)
-  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+  created_at  DateTime? @default(now()) 
+  updated_at  DateTime? @default(now()) 
 
   remitente    Persona  @relation("Remitente", fields: [remitente_id], references: [id])
   destinatario Persona  @relation("Destinatario", fields: [destinatario_id], references: [id])
@@ -176,17 +190,17 @@ model Encomienda {
 // ==========================================
 
 model Reclamo {
-  id                BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  codigo_reclamo    String    @unique @db.VarChar(50) // Ej: REC-2026-0001
-  persona_id        BigInt    @db.UnsignedBigInt
+  id                BigInt    @id @default(autoincrement()) 
+  codigo_reclamo    String    @unique  // Ej: REC-2026-0001
+  persona_id        BigInt    
   tipo              String    @default("reclamo") // "reclamo" o "queja"
-  detalle_incidente String    @db.Text
-  pedido_cliente    String    @db.Text
+  detalle_incidente String    
+  pedido_cliente    String    
   estado            String    @default("pendiente") // "pendiente", "en_proceso", "resuelto"
-  respuesta_admin   String?   @db.Text
-  fecha_incidente   DateTime  @db.Date
-  created_at        DateTime? @default(now()) @db.Timestamp(0)
-  updated_at        DateTime? @default(now()) @db.Timestamp(0)
+  respuesta_admin   String?   
+  fecha_incidente   DateTime  
+  created_at        DateTime? @default(now()) 
+  updated_at        DateTime? @default(now()) 
 
   persona Persona @relation(fields: [persona_id], references: [id], onDelete: Cascade)
 }
@@ -196,45 +210,108 @@ model Reclamo {
 // ==========================================
 
 model CodigoDescuento {
-  id                   BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  codigo               String    @unique @db.VarChar(20)
-  usuario_id           BigInt    @db.UnsignedBigInt
+  id                   BigInt    @id @default(autoincrement()) 
+  codigo               String    @unique 
+  usuario_id           BigInt    
   porcentaje_descuento Int       @default(10)
   esta_usado           Boolean   @default(false)
-  fecha_expiracion     DateTime? @db.DateTime(0)
-  created_at           DateTime? @default(now()) @db.Timestamp(0)
-  updated_at           DateTime? @default(now()) @db.Timestamp(0)
+  fecha_expiracion     DateTime? 
+  created_at           DateTime? @default(now()) 
+  updated_at           DateTime? @default(now()) 
 
   usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 }
 
 model VerificationCode {
-  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
-  user_id    BigInt   @db.UnsignedBigInt
-  code       String   @db.VarChar(10)
-  expires_at DateTime @db.DateTime(0)
+  id         BigInt   @id @default(autoincrement()) 
+  user_id    BigInt   
+  code       String   
+  expires_at DateTime 
   is_used    Boolean  @default(false)
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @db.Timestamp(0)
+  created_at DateTime @default(now()) 
+  updated_at DateTime @default(now()) 
   usuario    Usuario  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@index([user_id], map: "verification_codes_user_id_fkey")
+  @@index([user_id], map: "idx_verification_codes_user_id")
   @@map("verification_codes")
 }
 
 model Pago {
-  id            BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
-  viaje_id      BigInt        @db.UnsignedBigInt
-  asiento_id    BigInt?       @db.UnsignedBigInt
-  preference_id String        @db.VarChar(255)
+  id            BigInt        @id @default(autoincrement()) 
+  viaje_id      BigInt        
+  asiento_id    BigInt?       
+  preference_id String        
   status        String        @default("pending")
-  amount        Decimal       @db.Decimal(8, 2)
-  created_at    DateTime      @default(now()) @db.Timestamp(0)
-  updated_at    DateTime      @default(now()) @db.Timestamp(0)
+  amount        Decimal       
+  created_at    DateTime      @default(now()) 
+  updated_at    DateTime      @default(now()) 
   asiento       AsientoViaje? @relation(fields: [asiento_id], references: [id])
   viaje         Viaje         @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
 
-  @@index([asiento_id], map: "pago_asiento_id_fkey")
-  @@index([viaje_id], map: "pago_viaje_id_fkey")
+  @@index([asiento_id], map: "idx_pago_asiento_id")
+  @@index([viaje_id], map: "idx_pago_viaje_id")
   @@map("pago")
 }
+
+// ==========================================
+// 6. OPERACIONES Y CONDUCTOR
+// ==========================================
+
+model GastoRuta {
+  id            BigInt    @id @default(autoincrement()) 
+  viaje_id      BigInt    
+  conductor_id  BigInt    
+  concepto      String    
+  monto         Decimal   
+  foto_url      String?   
+  created_at    DateTime? @default(now()) 
+  updated_at    DateTime? @default(now()) 
+
+  viaje         Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+  conductor     Persona   @relation(fields: [conductor_id], references: [id], onDelete: Cascade)
+}
+
+model NovedadMecanica {
+  id            BigInt    @id @default(autoincrement()) 
+  viaje_id      BigInt    
+  bus_id        BigInt    
+  conductor_id  BigInt    
+  categoria     String    
+  descripcion   String    
+  estado        String    @default("pendiente")
+  created_at    DateTime? @default(now()) 
+  updated_at    DateTime? @default(now()) 
+
+  viaje         Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+  bus           Bus       @relation(fields: [bus_id], references: [id], onDelete: Cascade)
+  conductor     Persona   @relation(fields: [conductor_id], references: [id], onDelete: Cascade)
+}
+
+model AlertaCentral {
+  id            BigInt    @id @default(autoincrement()) 
+  viaje_id      BigInt    
+  mensaje       String    
+  leido         Boolean   @default(false)
+  created_at    DateTime? @default(now()) 
+  updated_at    DateTime? @default(now()) 
+
+  viaje         Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+}
+
+model BitacoraViaje {
+  id              BigInt    @id @default(autoincrement()) 
+  viaje_id        BigInt    
+  conductor_id    BigInt    
+  tipo            String    
+  gravedad        String    
+  descripcion     String    
+  retraso_minutos Int       @default(0)
+  solucionado     Boolean   @default(false)
+  fecha_solucion  DateTime? 
+  created_at      DateTime? @default(now()) 
+  updated_at      DateTime? @default(now()) 
+
+  viaje         Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
+  conductor     Persona   @relation(fields: [conductor_id], references: [id], onDelete: Cascade)
+}
+

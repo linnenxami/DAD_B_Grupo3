@@ -121,7 +121,7 @@ export default function AyudaPage() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/15 relative overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-transparent relative overflow-hidden">
       {/* Glow Effects de fondo */}
       <div className="absolute top-[30%] -left-36 w-[400px] h-[400px] bg-orange-200/10 rounded-full filter blur-3xl pointer-events-none z-0"></div>
       <div className="absolute bottom-[30%] -right-36 w-[400px] h-[400px] bg-amber-100/10 rounded-full filter blur-3xl pointer-events-none z-0"></div>
@@ -129,16 +129,16 @@ export default function AyudaPage() {
       <div className="relative z-10 flex flex-col flex-1">
         {/* Cabecera / Hero */}
         <section className="w-full bg-gradient-to-tr from-[#f07639] via-[#e66c2f] to-[#c8561d] py-16 md:py-20 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-          </div>
+          {/* Imagen de fondo oficial de El Cumbe en el banner */}
+          <div 
+            className="absolute inset-0 opacity-[0.25] pointer-events-none" 
+            style={{
+              backgroundImage: "url('/imagen-centro-ayuda.webp')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }} 
+          />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20">

@@ -3,69 +3,67 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    const { pathname } = req.nextUrl;
     const token = req.nextauth.token;
-    const rol = token?.rol as string | undefined;
+    const isAuth = !!token;
+    const isAuthPage = req.nextUrl.pathname.startsWith("/login") || req.nextUrl.pathname.startsWith("/registro");
+    const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
 
-    // Solo verificamos restricciones si están intentando acceder al panel de administración
-    if (pathname.startsWith("/admin")) {
+    if (isAuthPage) {
+      if (isAuth) {
+        if (token.role === "admin" || token.role === "vendedor") {
+          return NextResponse.redirect(new URL("/admin", req.url));
+        } else if (token.role === "conductor") {
+          return NextResponse.redirect(new URL("/staff/conductor", req.url));
+        } else if (token.role === "operario") {
+          return NextResponse.redirect(new URL("/staff/operario", req.url));
+        }
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+      return null;
+    }
 
-      // ==========================================
-      // 1. REGLAS PARA VENDEDOR
-      // ==========================================
-      if (rol === "vendedor") {
-        const rutasPermitidasVendedor = [
-          "/admin",
+    const isStaffRoute = req.nextUrl.pathname.startsWith("/staff");
+
+    if (isAdminRoute) {
+      if (!isAuth) return NextResponse.redirect(new URL("/login", req.url));
+      
+      const pathname = req.nextUrl.pathname;
+      if (token.role === "vendedor") {
+        const rutasPermitidas = [
           "/admin/pasajes",
           "/admin/encomiendas",
           "/admin/viajes"
         ];
-
-        const isAllowed = rutasPermitidasVendedor.some((route) => {
-          if (route === "/admin") return pathname === "/admin";
-          return pathname.startsWith(route);
-        });
-
+        const isAllowed = pathname === "/admin" || rutasPermitidas.some(ruta => pathname.startsWith(ruta));
         if (!isAllowed) {
           return NextResponse.redirect(new URL("/admin", req.url));
         }
+      } else if (token.role !== "admin") {
+        return NextResponse.redirect(new URL("/", req.url));
       }
-
-      // ==========================================
-      // 2. REGLAS PARA GERENTE (Estadísticas y Auditoría)
-      // ==========================================
-      if (rol === "gerente") {
-        const rutasPermitidasGerente = [
-          "/admin",               // Dashboard principal (Estadísticas)
-          "/admin/reclamaciones", // Para auditar quejas y reclamos
-          "/admin/usuarios",      // Para auditar al personal y clientes (solo lectura sugerido)
-          // Puedes agregar más rutas de reportes aquí en el futuro
-        ];
-
-        const isAllowed = rutasPermitidasGerente.some((route) => {
-          if (route === "/admin") return pathname === "/admin";
-          return pathname.startsWith(route);
-        });
-
-        if (!isAllowed) {
-          return NextResponse.redirect(new URL("/admin", req.url));
-        }
-      }
-
-      // Nota: Si el rol es "admin", no entra en ninguno de los IF anteriores,
-      // por lo que tiene acceso ilimitado a TODAS las rutas por defecto.
     }
 
-    // Pasa normalmente si cumple las reglas
-    return NextResponse.next();
+    if (isStaffRoute) {
+      if (!isAuth || (token.role !== "conductor" && token.role !== "operario")) {
+        return NextResponse.redirect(new URL("/login", req.url));
+      }
+
+      const pathname = req.nextUrl.pathname;
+      if (token.role === "conductor" && !pathname.startsWith("/staff/conductor")) {
+        return NextResponse.redirect(new URL("/staff/conductor", req.url));
+      }
+      if (token.role === "operario" && !pathname.startsWith("/staff/operario")) {
+        return NextResponse.redirect(new URL("/staff/operario", req.url));
+      }
+    }
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token, // Exige token válido para entrar a cualquier ruta protegida
+      authorized: () => true, // We handle authorization in the middleware function
     },
   }
 );
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/staff/:path*", "/login", "/registro"],
 };

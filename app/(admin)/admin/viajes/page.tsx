@@ -1,4 +1,4 @@
-import { obtenerViajes } from "../../actions/viajes";
+import { obtenerViajes, obtenerConductores } from "../../actions/viajes";
 import { obtenerRutas } from "../../actions/rutas";
 import { obtenerBuses } from "../../actions/buses";
 import ViajeClient from "./ViajeClient";
@@ -6,10 +6,11 @@ import ViajeClient from "./ViajeClient";
 export const dynamic = "force-dynamic";
 
 export default async function ViajesPage() {
-  const [viajesRes, rutasRes, busesRes] = await Promise.all([
+  const [viajesRes, rutasRes, busesRes, conductoresRes] = await Promise.all([
     obtenerViajes(),
     obtenerRutas(),
-    obtenerBuses()
+    obtenerBuses(),
+    obtenerConductores()
   ]);
 
   if (!viajesRes.success) {
@@ -22,6 +23,7 @@ export default async function ViajesPage() {
 
   const rutas = rutasRes.success ? rutasRes.data : [];
   const buses = busesRes.success ? busesRes.data : [];
+  const conductores = conductoresRes.success ? conductoresRes.data : [];
 
   return (
     <div>
@@ -29,6 +31,7 @@ export default async function ViajesPage() {
         initialViajes={viajesRes.data || []} 
         rutas={rutas} 
         buses={buses} 
+        conductores={conductores}
       />
     </div>
   );

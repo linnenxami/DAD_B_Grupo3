@@ -4,12 +4,13 @@ import AdsCarousel from "@/components/AdsCarousel";
 import ServicesList from "@/components/ServicesList";
 import HomeBookingSearch from "@/components/HomeBookingSearch";
 import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
+import Image from "next/image";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="flex flex-col flex-1 bg-gradient-to-br from-gray-50 via-white to-orange-50/15 relative overflow-hidden">
+    <div className="flex flex-col flex-1 bg-transparent relative overflow-hidden">
       {/* Círculos decorativos de fondo con desenfoque (Glow Effect) */}
       <div className="absolute top-[50%] -left-36 w-[450px] h-[450px] bg-orange-200/20 rounded-full filter blur-3xl pointer-events-none z-0"></div>
       <div className="absolute top-[70%] -right-36 w-[450px] h-[450px] bg-amber-100/25 rounded-full filter blur-3xl pointer-events-none z-0"></div>
@@ -19,17 +20,20 @@ export default async function Home() {
       <section className="relative w-full h-[300px] sm:h-[400px] lg:h-[450px]">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <img
-            src="/banner.png"
+          <Image
+            src="/banner.webp"
             alt="Banner El Cumbe"
-            className="w-full h-full object-cover"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
           />
           {/* Overlay gradient to ensure text readability */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent z-10"></div>
         </div>
 
         {/* Dynamic Greeting */}
-        <div className="relative h-full flex flex-col justify-center px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto">
+        <div className="relative z-20 h-full flex flex-col justify-center px-4 sm:px-6 lg:px-16 max-w-7xl mx-auto">
           {session ? (
             <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-md">
               Hola, <span className="text-[#f07639]">{session.user?.name}</span>

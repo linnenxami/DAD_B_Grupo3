@@ -2,6 +2,16 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+// Función auxiliar para verificar si el usuario tiene rol de administrador o vendedor
+async function checkAdminOrVendedor() {
+  const session = await getServerSession(authOptions);
+  if (!session || (session.user.role !== "admin" && session.user.role !== "vendedor")) {
+    throw new Error("Acceso no autorizado. Debe ser administrador o vendedor.");
+  }
+}
 
 // Función auxiliar para parsear y validar ID numéricos / BigInt
 function parseId(id: string | number | bigint): bigint {
@@ -19,6 +29,7 @@ function serializeBigInt<T>(obj: T): any {
 
 export async function obtenerViajes() {
   try {
+    await checkAdminOrVendedor();
     const viajes = await prisma.viaje.findMany({
       include: {
         ruta: {
@@ -28,6 +39,7 @@ export async function obtenerViajes() {
           }
         },
         bus: { select: { placa: true, capacidad: true, pisos: true } },
+        conductor: { select: { nombres: true, apellidos: true } },
       },
       orderBy: { fecha_salida: "desc" },
     });
@@ -39,15 +51,35 @@ export async function obtenerViajes() {
   }
 }
 
+export async function obtenerConductores() {
+  try {
+    await checkAdminOrVendedor();
+    const conductores = await prisma.persona.findMany({
+      where: {
+        usuario: {
+          rol: "conductor"
+        }
+      }
+    });
+    return { success: true, data: serializeBigInt(conductores) };
+  } catch (error) {
+    console.error("Error al obtener conductores:", error);
+    return { success: false, error: "Error al obtener conductores" };
+  }
+}
+
 export async function crearViajeConAsientos(data: { 
   ruta_id: string | number; 
   bus_id: string | number; 
+  conductor_id?: string | number;
   fecha_salida: string; 
   fecha_llegada?: string 
 }) {
   try {
+    await checkAdminOrVendedor();
     const rutaId = parseId(data.ruta_id);
     const busId = parseId(data.bus_id);
+    const conductorId = data.conductor_id ? parseId(data.conductor_id) : undefined;
     const fechaSalida = new Date(data.fecha_salida);
     const fechaLlegada = data.fecha_llegada ? new Date(data.fecha_llegada) : undefined;
 
@@ -87,10 +119,21 @@ export async function crearViajeConAsientos(data: {
         data: {
           ruta_id: rutaId,
           bus_id: busId,
+          conductor_id: conductorId,
           fecha_salida: fechaSalida,
           fecha_llegada: fechaLlegada,
           estado: "programado",
         },
+        include: {
+          ruta: {
+            include: {
+              origen: { select: { nombre: true } },
+              destino: { select: { nombre: true } }
+            }
+          },
+          bus: { select: { placa: true, capacidad: true, pisos: true } },
+          conductor: { select: { nombres: true, apellidos: true } }
+        }
       });
 
       // 2. Generar el array de asientos basado en la lógica de pisos
@@ -151,6 +194,7 @@ export async function crearViajeConAsientos(data: {
 
 export async function cancelarViaje(id: string | number) {
   try {
+    await checkAdminOrVendedor();
     const viajeId = parseId(id);
     
     await prisma.viaje.update({
@@ -163,5 +207,162 @@ export async function cancelarViaje(id: string | number) {
   } catch (error) {
     console.error("Error al cancelar viaje:", error);
     return { success: false, error: "Error al cancelar viaje." };
+  }
+}
+
+export async function actualizarViaje(id: string | number, data: {
+  ruta_id: string | number;
+  bus_id: string | number;
+  conductor_id?: string | number;
+  fecha_salida: string;
+  fecha_llegada?: string;
+}) {
+  try {
+    await checkAdminOrVendedor();
+    const viajeId = parseId(id);
+    const rutaId = parseId(data.ruta_id);
+    const busId = parseId(data.bus_id);
+    const conductorId = data.conductor_id ? parseId(data.conductor_id) : null;
+    const fechaSalida = new Date(data.fecha_salida);
+    const fechaLlegada = data.fecha_llegada ? new Date(data.fecha_llegada) : null;
+
+    if (isNaN(fechaSalida.getTime())) {
+      return { success: false, error: "Fecha de salida inválida." };
+    }
+
+    if (fechaLlegada && isNaN(fechaLlegada.getTime())) {
+      return { success: false, error: "Fecha de llegada inválida." };
+    }
+
+    // Obtener viaje actual para ver si cambió el bus
+    const viajeActual = await prisma.viaje.findUnique({
+      where: { id: viajeId },
+      select: { bus_id: true }
+    });
+
+    if (!viajeActual) {
+      return { success: false, error: "El viaje no existe." };
+    }
+
+    const busCambio = viajeActual.bus_id !== busId;
+
+    const viajeActualizado = await prisma.$transaction(async (tx) => {
+      // Si cambia el bus, debemos regenerar asientos, pero verificar que no haya pasajes vendidos
+      if (busCambio) {
+        // Verificar si hay pasajes vendidos o asientos ocupados
+        const ocupados = await tx.asientoViaje.findFirst({
+          where: { viaje_id: viajeId, estado: { not: "disponible" } }
+        });
+        if (ocupados) {
+          throw new Error("No se puede cambiar el bus porque ya cuenta con asientos ocupados o reservados.");
+        }
+
+        // Obtener detalles del nuevo bus
+        const bus = await tx.bus.findUnique({
+          where: { id: busId }
+        });
+        if (!bus) {
+          throw new Error("El bus seleccionado no existe.");
+        }
+
+        // Eliminar asientos viejos
+        await tx.asientoViaje.deleteMany({
+          where: { viaje_id: viajeId }
+        });
+
+        // Crear nuevos asientos
+        let restringidos: number[] = [];
+        if (bus.asientos_restringidos) {
+          try {
+            restringidos = JSON.parse(bus.asientos_restringidos);
+          } catch (e) {}
+        }
+
+        const asientosData: any[] = [];
+        const totalAsientos = bus.capacidad;
+        let asientosPiso1 = totalAsientos;
+        let asientosPiso2 = 0;
+
+        if (bus.pisos === 2) {
+          asientosPiso1 = bus.asientos_piso_1 || 12;
+          asientosPiso2 = totalAsientos - asientosPiso1;
+        }
+
+        for (let i = 1; i <= asientosPiso1; i++) {
+          asientosData.push({
+            viaje_id: viajeId,
+            numero_asiento: i,
+            piso: 1,
+            estado: restringidos.includes(i) ? "inactivo" : "disponible"
+          });
+        }
+
+        if (bus.pisos === 2) {
+          for (let i = 1; i <= asientosPiso2; i++) {
+            const numAsiento = asientosPiso1 + i;
+            asientosData.push({
+              viaje_id: viajeId,
+              numero_asiento: numAsiento,
+              piso: 2,
+              estado: restringidos.includes(numAsiento) ? "inactivo" : "disponible"
+            });
+          }
+        }
+
+        await tx.asientoViaje.createMany({
+          data: asientosData
+        });
+      }
+
+      return await tx.viaje.update({
+        where: { id: viajeId },
+        data: {
+          ruta_id: rutaId,
+          bus_id: busId,
+          conductor_id: conductorId,
+          fecha_salida: fechaSalida,
+          fecha_llegada: fechaLlegada,
+        },
+        include: {
+          ruta: {
+            include: {
+              origen: { select: { nombre: true } },
+              destino: { select: { nombre: true } }
+            }
+          },
+          bus: { select: { placa: true, capacidad: true, pisos: true } },
+          conductor: { select: { nombres: true, apellidos: true } }
+        }
+      });
+    });
+
+    revalidatePath("/admin/viajes");
+    return { success: true, data: serializeBigInt(viajeActualizado) };
+  } catch (error: any) {
+    console.error("Error al actualizar viaje:", error);
+    return { success: false, error: error.message || "Error al actualizar viaje" };
+  }
+}
+
+export async function enviarAlertaCentral(viajeId: string | number, mensaje: string) {
+  try {
+    await checkAdminOrVendedor();
+    const vId = parseId(viajeId);
+    if (!mensaje.trim()) {
+      return { success: false, error: "El mensaje no puede estar vacío." };
+    }
+
+    const alerta = await prisma.alertaCentral.create({
+      data: {
+        viaje_id: vId,
+        mensaje: mensaje.trim(),
+        leido: false
+      }
+    });
+
+    return { success: true, data: serializeBigInt(alerta) };
+  } catch (error) {
+    console.error("Error al enviar alerta de central:", error);
+    return { success: false, error: "Error al enviar la alerta." };
   }
 }

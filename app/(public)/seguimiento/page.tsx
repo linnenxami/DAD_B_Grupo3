@@ -150,7 +150,7 @@ export default function SeguimientoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/15 py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Círculos decorativos de fondo con desenfoque (Glow Effect) */}
       <div className="absolute top-[10%] -left-36 w-96 h-96 bg-orange-200/30 rounded-full filter blur-3xl pointer-events-none z-0"></div>
       <div className="absolute bottom-[20%] -right-36 w-96 h-96 bg-amber-100/30 rounded-full filter blur-3xl pointer-events-none z-0"></div>

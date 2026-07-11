@@ -1,5 +1,6 @@
 import { getReclamaciones } from "@/app/(admin)/actions/reclamaciones";
 import ReclamacionesClient from "./ReclamacionesClient";
+import { MessageSquareWarning } from "lucide-react";
 
 export const metadata = {
   title: "Gestión de Reclamaciones | El Cumbe",
@@ -11,10 +12,15 @@ export default async function ReclamacionesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-[#0d1220] tracking-tight">Reclamaciones</h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium">Gestión de quejas y reclamos de los clientes</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#f07639] to-[#d45a1f] flex items-center justify-center text-white shadow-lg shadow-[#f07639]/20">
+            <MessageSquareWarning className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Reclamaciones</h2>
+            <p className="text-[12px] text-slate-400 font-medium">Gestión de quejas y reclamos de los clientes.</p>
+          </div>
         </div>
       </div>
 

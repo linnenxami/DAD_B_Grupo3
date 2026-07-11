@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import Image from "next/image";
+
 const slides = [
-  "/prom_1.png",
-  "/prom_2.png",
-  "/prom_3.png",
-  "/prom_4.png",
+  "/prom_1.webp",
+  "/prom_2.webp",
+  "/prom_3.webp",
+  "/prom_4.webp",
 ];
 
 export default function AdsCarousel() {
@@ -40,12 +42,16 @@ export default function AdsCarousel() {
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
         {slides.map((slide, index) => (
-          <img
-            key={index}
-            src={slide}
-            alt={`Publicidad ${index + 1}`}
-            className="w-full h-full object-cover flex-shrink-0"
-          />
+          <div key={index} className="w-full h-full relative flex-shrink-0">
+            <Image
+              src={slide}
+              alt={`Publicidad ${index + 1}`}
+              fill
+              sizes="375px"
+              priority={index === 0}
+              className="object-cover"
+            />
+          </div>
         ))}
       </div>
 
