@@ -300,3 +300,81 @@ export async function getAlertasConductor(conductorId: number) {
   }
 }
 
+export async function eliminarGasto(gastoId: number) {
+  try {
+    const gasto = await prisma.gastoRuta.findUnique({
+      where: { id: gastoId }
+    });
+    if (!gasto) return { success: false, error: "Gasto no encontrado" };
+    await prisma.gastoRuta.delete({
+      where: { id: gastoId }
+    });
+    revalidatePath(`/staff/conductor/viajes/${gasto.viaje_id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    return { success: false, error: "No se pudo eliminar el gasto" };
+  }
+}
+
+export async function eliminarBitacora(bitacoraId: number) {
+  try {
+    const bitacora = await prisma.bitacoraViaje.findUnique({
+      where: { id: bitacoraId }
+    });
+    if (!bitacora) return { success: false, error: "Registro no encontrado" };
+    await prisma.bitacoraViaje.delete({
+      where: { id: bitacoraId }
+    });
+    revalidatePath(`/staff/conductor/viajes/${bitacora.viaje_id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting log:", error);
+    return { success: false, error: "No se pudo eliminar la novedad" };
+  }
+}
+
+export async function resolverIncidente(bitacoraId: number) {
+  try {
+    const bitacora = await prisma.bitacoraViaje.findUnique({
+      where: { id: BigInt(bitacoraId) }
+    });
+    if (!bitacora) return { success: false, error: "Registro no encontrado" };
+
+    const fechaCreacion = bitacora.created_at ? new Date(bitacora.created_at) : new Date();
+    const fechaSolucion = new Date();
+    
+    // Calcular minutos transcurridos reales
+    const diferenciaMs = fechaSolucion.getTime() - fechaCreacion.getTime();
+    const minutosTranscurridos = Math.max(1, Math.round(diferenciaMs / (1000 * 60))); // Mínimo 1 minuto de retraso
+
+    await prisma.bitacoraViaje.update({
+      where: { id: BigInt(bitacoraId) },
+      data: {
+        solucionado: true,
+        fecha_solucion: fechaSolucion,
+        retraso_minutos: minutosTranscurridos
+      }
+    });
+
+    // Actualizar la fecha_llegada estimada del viaje sumando los minutos correspondientes reales
+    const viaje = await prisma.viaje.findUnique({
+      where: { id: BigInt(bitacora.viaje_id) }
+    });
+    if (viaje && viaje.fecha_llegada && minutosTranscurridos > 0) {
+      const nuevaLlegada = new Date(viaje.fecha_llegada.getTime() + minutosTranscurridos * 60 * 1000);
+      await prisma.viaje.update({
+        where: { id: BigInt(bitacora.viaje_id) },
+        data: { fecha_llegada: nuevaLlegada }
+      });
+    }
+
+    revalidatePath(`/staff/conductor/viajes/${bitacora.viaje_id.toString()}`);
+    revalidatePath("/admin/viajes");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error resolving incident:", error);
+    return { success: false, error: `No se pudo marcar como solucionado: ${error.message || error}` };
+  }
+}
+

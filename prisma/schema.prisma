@@ -299,15 +299,17 @@ model AlertaCentral {
 }
 
 model BitacoraViaje {
-  id            BigInt    @id @default(autoincrement()) 
-  viaje_id      BigInt    
-  conductor_id  BigInt    
-  tipo          String    
-  gravedad      String    
-  descripcion   String    
-  retraso_minutos Int     @default(0)
-  created_at    DateTime? @default(now()) 
-  updated_at    DateTime? @default(now()) 
+  id              BigInt    @id @default(autoincrement()) 
+  viaje_id        BigInt    
+  conductor_id    BigInt    
+  tipo            String    
+  gravedad        String    
+  descripcion     String    
+  retraso_minutos Int       @default(0)
+  solucionado     Boolean   @default(false)
+  fecha_solucion  DateTime? 
+  created_at      DateTime? @default(now()) 
+  updated_at      DateTime? @default(now()) 
 
   viaje         Viaje     @relation(fields: [viaje_id], references: [id], onDelete: Cascade)
   conductor     Persona   @relation(fields: [conductor_id], references: [id], onDelete: Cascade)
