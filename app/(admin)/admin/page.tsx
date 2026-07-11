@@ -1,6 +1,8 @@
 import { Ticket, Package, Bus, TrendingUp, AlertCircle, MapPin, Building, ArrowUpRight, Calendar, CircleDollarSign, Activity, ArrowRight } from "lucide-react";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import DashboardGerente from "./components/DashboardGerente";
 import {
   getDashboardStats,
   getDemandaAlertas,
@@ -11,12 +13,18 @@ import {
 export default async function AdminDashboardPage() {
   const session = await getServerSession(authOptions);
 
-  const [statsRes, alertasRes, encomiendasRes, viajesRes] = await Promise.all([
+  const [statsRes, alertasRes, encomiendasRes, viajesRes, sucursalesRaw] = await Promise.all([
     getDashboardStats(),
     getDemandaAlertas(),
     getEncomiendasPorDestino(),
     getViajesPorDestino(),
+    prisma.sucursal.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } })
   ]);
+
+  const sucursales = sucursalesRaw.map(s => ({
+    id: s.id.toString(),
+    nombre: s.nombre
+  }));
 
   const statsData = statsRes.data || {
     pasajesVendidosHoy: 0,
@@ -109,6 +117,13 @@ export default async function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ===== DASHBOARD GERENCIAL ===== */}
+      {(session?.user?.role === "admin" || session?.user?.role === "gerente") && (
+        <div className="mb-8">
+          <DashboardGerente sucursales={sucursales} />
+        </div>
+      )}
 
       {/* ===== STAT CARDS ===== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-8 stagger-children">

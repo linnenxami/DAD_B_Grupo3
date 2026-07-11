@@ -4,11 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// Helper para verificar rol de administrador
+// Helper para verificar rol de administrador o gerente
 async function checkAdmin() {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "admin") {
-    throw new Error("Acceso denegado. Debe ser administrador.");
+  if (!session || (session.user.role !== "admin" && session.user.role !== "gerente")) {
+    throw new Error("Acceso denegado. Debe ser administrador o gerente.");
   }
 }
 

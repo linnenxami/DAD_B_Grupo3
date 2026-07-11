@@ -10,7 +10,7 @@ export default withAuth(
 
     if (isAuthPage) {
       if (isAuth) {
-        if (token.role === "admin" || token.role === "vendedor") {
+        if (token.role === "admin" || token.role === "vendedor" || token.role === "gerente") {
           return NextResponse.redirect(new URL("/admin", req.url));
         } else if (token.role === "conductor") {
           return NextResponse.redirect(new URL("/staff/conductor", req.url));
@@ -38,7 +38,7 @@ export default withAuth(
         if (!isAllowed) {
           return NextResponse.redirect(new URL("/admin", req.url));
         }
-      } else if (token.role !== "admin") {
+      } else if (token.role !== "admin" && token.role !== "gerente") {
         return NextResponse.redirect(new URL("/", req.url));
       }
     }

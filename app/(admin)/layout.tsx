@@ -33,7 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const userRole = session?.user?.role || "cliente";
 
   const mainNav = [
-    { name: "Inicio", href: "/admin", icon: LayoutDashboard, roles: ["admin", "vendedor"] },
+    { name: "Inicio", href: "/admin", icon: LayoutDashboard, roles: ["admin", "vendedor", "gerente"] },
     { name: "Pasajes", href: "/admin/pasajes", icon: Ticket, roles: ["admin", "vendedor"] },
     { name: "Encomiendas", href: "/admin/encomiendas", icon: Package, roles: ["admin", "vendedor"] },
     { name: "Mi Panel", href: "/admin/conductor", icon: LayoutDashboard, roles: ["conductor"] },
@@ -46,11 +46,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Buses", href: "/admin/buses", icon: Bus, roles: ["admin"] },
     { name: "Sucursales", href: "/admin/sucursales", icon: Building, roles: ["admin"] },
     { name: "Reclamaciones", href: "/admin/reclamaciones", icon: MessageSquareWarning, roles: ["admin"] },
+    { name: "Usuarios", href: "/admin/usuarios", icon: User, roles: ["admin", "gerente"] },
   ];
 
   const reportsNav = [
-    { name: "Reporte de Ventas", href: "/admin/reportes", icon: BarChart3, roles: ["admin"] },
-    { name: "Reporte de Operaciones", href: "/admin/reportes/operaciones", icon: ClipboardList, roles: ["admin"] },
+    { name: "Reporte de Ventas", href: "/admin/reportes", icon: BarChart3, roles: ["admin", "gerente"] },
+    { name: "Reporte de Operaciones", href: "/admin/reportes/operaciones", icon: ClipboardList, roles: ["admin", "gerente"] },
   ];
 
   const getPageTitle = () => {
