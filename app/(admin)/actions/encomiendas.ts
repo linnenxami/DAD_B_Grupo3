@@ -28,7 +28,13 @@ export async function obtenerEncomiendas() {
         viaje: {
           select: {
             id: true,
-            bus: { select: { placa: true } }
+            bus: { select: { placa: true } },
+            conductor: {
+              select: {
+                nombres: true,
+                apellidos: true
+              }
+            }
           }
         },
         remitente: true,
@@ -91,6 +97,9 @@ export async function registrarEncomienda(data: {
 }) {
   try {
     await requireAdminOrVendedor();
+    if (data.remitente.dni.trim() === data.destinatario.dni.trim()) {
+      throw new Error("El remitente y el destinatario no pueden tener el mismo DNI.");
+    }
     const resultado = await prisma.$transaction(async (tx) => {
       // 1. Upsert Remitente
       const remitente = await tx.persona.upsert({
@@ -146,5 +155,87 @@ export async function registrarEncomienda(data: {
   } catch (error: any) {
     console.error("Error al registrar encomienda:", error);
     return { success: false, error: error.message || "Error al registrar la encomienda" };
+  }
+}
+
+export async function editarEncomienda(id: string | number, data: {
+  remitente: { dni: string; nombres: string; apellidos: string; telefono?: string };
+  destinatario: { dni: string; nombres: string; apellidos: string; telefono?: string };
+  paquete: { origen_id: string; destino_id: string; peso_kg: string; precio: string; descripcion: string };
+  estado?: string;
+}) {
+  try {
+    await requireAdminOrVendedor();
+    if (data.remitente.dni.trim() === data.destinatario.dni.trim()) {
+      throw new Error("El remitente y el destinatario no pueden tener el mismo DNI.");
+    }
+    const encomiendaId = parseId(id);
+
+    // Verificamos que la encomienda exista y esté en estado 'recepcionado'
+    const encomiendaExistente = await prisma.encomienda.findUnique({
+      where: { id: encomiendaId },
+    });
+
+    if (!encomiendaExistente) throw new Error("La encomienda no existe");
+    if (encomiendaExistente.estado !== 'recepcionado') {
+      throw new Error("Solo se pueden editar encomiendas en estado 'recepcionado'");
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Upsert Remitente
+      const remitente = await tx.persona.upsert({
+        where: { dni: data.remitente.dni },
+        create: {
+          dni: data.remitente.dni,
+          nombres: data.remitente.nombres.toUpperCase(),
+          apellidos: data.remitente.apellidos.toUpperCase(),
+          telefono: data.remitente.telefono || null,
+        },
+        update: {
+          nombres: data.remitente.nombres.toUpperCase(),
+          apellidos: data.remitente.apellidos.toUpperCase(),
+          telefono: data.remitente.telefono || undefined,
+        }
+      });
+
+      // 2. Upsert Destinatario
+      const destinatario = await tx.persona.upsert({
+        where: { dni: data.destinatario.dni },
+        create: {
+          dni: data.destinatario.dni,
+          nombres: data.destinatario.nombres.toUpperCase(),
+          apellidos: data.destinatario.apellidos.toUpperCase(),
+          telefono: data.destinatario.telefono || null,
+        },
+        update: {
+          nombres: data.destinatario.nombres.toUpperCase(),
+          apellidos: data.destinatario.apellidos.toUpperCase(),
+          telefono: data.destinatario.telefono || undefined,
+        }
+      });
+
+      // 3. Actualizar Encomienda
+      const encomiendaActualizada = await tx.encomienda.update({
+        where: { id: encomiendaId },
+        data: {
+          remitente_id: remitente.id,
+          destinatario_id: destinatario.id,
+          origen_id: parseId(data.paquete.origen_id),
+          destino_id: parseId(data.paquete.destino_id),
+          peso_kg: parseFloat(data.paquete.peso_kg),
+          precio: parseFloat(data.paquete.precio),
+          descripcion: data.paquete.descripcion,
+          estado: data.estado || undefined
+        }
+      });
+
+      return encomiendaActualizada;
+    });
+
+    revalidatePath("/admin/encomiendas");
+    return { success: true, data: serializeBigInt(resultado) };
+  } catch (error: any) {
+    console.error("Error al editar encomienda:", error);
+    return { success: false, error: error.message || "Error al editar la encomienda" };
   }
 }

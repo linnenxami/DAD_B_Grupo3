@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { User, MapPin, Package, Save, Loader2, Search, CheckCircle2 } from "lucide-react";
-import { registrarEncomienda } from "../../actions/encomiendas";
+import { registrarEncomienda, editarEncomienda } from "../../actions/encomiendas";
 import { buscarPasajeroPorDni } from "../../actions/pasajes"; // Usamos esta función porque busca en Persona
 
 type Sucursal = { id: string; nombre: string };
@@ -16,26 +16,51 @@ type PersonaForm = {
 
 export default function RegistroEncomienda({ 
   sucursales,
-  onSuccess 
+  viajesActivos,
+  onSuccess,
+  editingEncomienda,
+  onCancel
 }: { 
   sucursales: Sucursal[],
-  onSuccess: () => void 
+  viajesActivos: any[],
+  onSuccess: () => void,
+  editingEncomienda?: any | null,
+  onCancel?: () => void
 }) {
-  const [remitente, setRemitente] = useState<PersonaForm>({ dni: "", nombres: "", apellidos: "", telefono: "" });
-  const [destinatario, setDestinatario] = useState<PersonaForm>({ dni: "", nombres: "", apellidos: "", telefono: "" });
+  const [remitente, setRemitente] = useState<PersonaForm>({
+    dni: editingEncomienda?.remitente?.dni || "",
+    nombres: editingEncomienda?.remitente?.nombres || "",
+    apellidos: editingEncomienda?.remitente?.apellidos || "",
+    telefono: editingEncomienda?.remitente?.telefono || ""
+  });
+  const [destinatario, setDestinatario] = useState<PersonaForm>({
+    dni: editingEncomienda?.destinatario?.dni || "",
+    nombres: editingEncomienda?.destinatario?.nombres || "",
+    apellidos: editingEncomienda?.destinatario?.apellidos || "",
+    telefono: editingEncomienda?.destinatario?.telefono || ""
+  });
   
   const [paquete, setPaquete] = useState({
-    origen_id: "",
-    destino_id: "",
-    peso_kg: "",
-    precio: "",
-    descripcion: ""
+    origen_id: editingEncomienda?.origen_id?.toString() || "",
+    destino_id: editingEncomienda?.destino_id?.toString() || "",
+    peso_kg: editingEncomienda?.peso_kg?.toString() || "",
+    precio: editingEncomienda?.precio?.toString() || "",
+    descripcion: editingEncomienda?.descripcion || "",
+    viaje_id: editingEncomienda?.viaje_id?.toString() || ""
   });
 
   const [isLoadingRemitente, setIsLoadingRemitente] = useState(false);
   const [isLoadingDestinatario, setIsLoadingDestinatario] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+
+  const filteredViajes = useMemo(() => {
+    if (!paquete.origen_id || !paquete.destino_id) return [];
+    return viajesActivos.filter(v => 
+      v.ruta.origen_id?.toString() === paquete.origen_id &&
+      v.ruta.destino_id?.toString() === paquete.destino_id
+    );
+  }, [viajesActivos, paquete.origen_id, paquete.destino_id]);
 
   const buscarPersona = async (dni: string, type: 'remitente' | 'destinatario') => {
     if (dni.length < 8) return;
@@ -65,6 +90,12 @@ export default function RegistroEncomienda({
     setIsSubmitting(true);
     setSuccessMsg("");
 
+    if (remitente.dni.trim() === destinatario.dni.trim()) {
+      alert("El DNI del remitente y del destinatario no pueden ser iguales.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!paquete.origen_id || !paquete.destino_id) {
       alert("Por favor seleccione origen y destino.");
       setIsSubmitting(false);
@@ -72,25 +103,42 @@ export default function RegistroEncomienda({
     }
 
     try {
-      const res = await registrarEncomienda({
-        remitente,
-        destinatario,
-        paquete
-      });
+      if (editingEncomienda) {
+        const res = await editarEncomienda(editingEncomienda.id, {
+          remitente,
+          destinatario,
+          paquete
+        });
 
-      if (res.success) {
-        setSuccessMsg(`¡Encomienda registrada con éxito! Código: ${res.data.codigo_seguimiento}`);
-        // Limpiar form
-        setRemitente({ dni: "", nombres: "", apellidos: "", telefono: "" });
-        setDestinatario({ dni: "", nombres: "", apellidos: "", telefono: "" });
-        setPaquete({ origen_id: "", destino_id: "", peso_kg: "", precio: "", descripcion: "" });
-        
-        // Llamamos al callback después de unos segundos
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
+        if (res.success) {
+          setSuccessMsg(`¡Encomienda editada con éxito!`);
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        } else {
+          alert(res.error || "Error al editar la encomienda");
+        }
       } else {
-        alert(res.error || "Error al registrar la encomienda");
+        const res = await registrarEncomienda({
+          remitente,
+          destinatario,
+          paquete
+        });
+
+        if (res.success) {
+          setSuccessMsg(`¡Encomienda registrada con éxito! Código: ${res.data.codigo_seguimiento}`);
+          // Limpiar form
+          setRemitente({ dni: "", nombres: "", apellidos: "", telefono: "" });
+          setDestinatario({ dni: "", nombres: "", apellidos: "", telefono: "" });
+          setPaquete({ origen_id: "", destino_id: "", peso_kg: "", precio: "", descripcion: "", viaje_id: "" });
+          
+          // Llamamos al callback después de unos segundos
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        } else {
+          alert(res.error || "Error al registrar la encomienda");
+        }
       }
     } catch (error) {
       alert("Error de conexión");
@@ -126,7 +174,13 @@ export default function RegistroEncomienda({
                     type="text" required maxLength={8}
                     className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#f07639] outline-none"
                     value={remitente.dni} 
-                    onChange={(e) => setRemitente({...remitente, dni: e.target.value})}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setRemitente({...remitente, dni: val});
+                      if (val.length === 8) {
+                        buscarPersona(val, 'remitente');
+                      }
+                    }}
                   />
                   <button type="button" onClick={() => buscarPersona(remitente.dni, 'remitente')} className="bg-gray-200 p-2 rounded-xl hover:bg-gray-300 transition-colors">
                     {isLoadingRemitente ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
@@ -167,7 +221,13 @@ export default function RegistroEncomienda({
                     type="text" required maxLength={8}
                     className="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#f07639] outline-none"
                     value={destinatario.dni} 
-                    onChange={(e) => setDestinatario({...destinatario, dni: e.target.value})}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDestinatario({...destinatario, dni: val});
+                      if (val.length === 8) {
+                        buscarPersona(val, 'destinatario');
+                      }
+                    }}
                   />
                   <button type="button" onClick={() => buscarPersona(destinatario.dni, 'destinatario')} className="bg-gray-200 p-2 rounded-xl hover:bg-gray-300 transition-colors">
                     {isLoadingDestinatario ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
@@ -236,22 +296,56 @@ export default function RegistroEncomienda({
                 value={paquete.precio} onChange={e => setPaquete({...paquete, precio: e.target.value})} />
             </div>
 
-            <div className="md:col-span-2 lg:col-span-4">
+            <div className="md:col-span-2 lg:col-span-2">
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Descripción del Contenido</label>
               <input type="text" required placeholder="Ej. Caja de ropa, documentos..." className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#f07639] outline-none"
                 value={paquete.descripcion} onChange={e => setPaquete({...paquete, descripcion: e.target.value})} />
             </div>
+
+            <div className="md:col-span-2 lg:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Asignar Viaje (Opcional)</label>
+              <select 
+                value={paquete.viaje_id} 
+                onChange={e => setPaquete({...paquete, viaje_id: e.target.value})} 
+                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#f07639] outline-none bg-white cursor-pointer"
+              >
+                <option value="">No asignar viaje aún</option>
+                {filteredViajes.map(v => {
+                  const fecha = new Date(v.fecha_salida).toLocaleString("es-PE", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  });
+                  const driver = v.conductor ? ` (${v.conductor.nombres} ${v.conductor.apellidos})` : "";
+                  return (
+                    <option key={v.id} value={v.id}>
+                      {fecha} | Bus: {v.bus.placa}{driver}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end gap-3 pt-4">
+          {onCancel && (
+            <button 
+              type="button" 
+              onClick={onCancel}
+              className="px-6 py-3 border border-gray-200 hover:bg-gray-50 text-gray-650 rounded-xl font-bold transition-all cursor-pointer"
+            >
+              Cancelar
+            </button>
+          )}
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="bg-[#f07639] hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/30 flex items-center"
+            className="bg-[#f07639] hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/30 flex items-center cursor-pointer"
           >
             {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-            {isSubmitting ? "Registrando..." : "Registrar Encomienda"}
+            {isSubmitting ? (editingEncomienda ? "Guardando..." : "Registrando...") : (editingEncomienda ? "Guardar Cambios" : "Registrar Encomienda")}
           </button>
         </div>
       </form>

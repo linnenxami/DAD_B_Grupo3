@@ -101,11 +101,10 @@ export async function getDashboardStats() {
     const busesDisponibles = Math.max(0, totalBuses - busesTaller - busesEnRuta);
 
     // 4. Obtener próximas salidas hoy
-    const ahora = new Date();
     const proximasSalidas = await prisma.viaje.findMany({
       where: {
         fecha_salida: {
-          gte: ahora,
+          gte: hoy,
           lt: manana,
         },
         estado: "programado",

@@ -39,7 +39,7 @@ export async function getViajesConductor(personaId: number) {
         bitacoras: true,
       },
       orderBy: {
-        fecha_salida: "asc"
+        fecha_salida: "desc"
       }
     });
 
@@ -206,7 +206,7 @@ export async function obtenerBusesAsignados(conductorId: number) {
         },
       },
       orderBy: {
-        fecha_salida: "asc",
+        fecha_salida: "desc",
       },
     });
 
