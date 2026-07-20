@@ -38,7 +38,7 @@ async function verifyAdminRole() {
 export async function obtenerRutas() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !["admin", "gerente"].includes(session.user.role || "")) throw new Error("No autorizado.");
+    if (!session || !["admin", "gerente", "vendedor"].includes(session.user.role || "")) throw new Error("No autorizado.");
     const rutas = await prisma.ruta.findMany({
       include: {
         origen: { select: { nombre: true } },

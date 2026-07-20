@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { User, MapPin, Package, Save, Loader2, Search, CheckCircle2 } from "lucide-react";
-import { registrarEncomienda } from "../../actions/encomiendas";
+import { registrarEncomienda, editarEncomienda } from "../../actions/encomiendas";
 import { buscarPasajeroPorDni } from "../../actions/pasajes"; // Usamos esta función porque busca en Persona
 
 type Sucursal = { id: string; nombre: string };
@@ -16,20 +16,34 @@ type PersonaForm = {
 
 export default function RegistroEncomienda({ 
   sucursales,
-  onSuccess 
+  onSuccess,
+  editingEncomienda,
+  onCancel
 }: { 
   sucursales: Sucursal[],
-  onSuccess: () => void 
+  onSuccess: () => void,
+  editingEncomienda?: any | null,
+  onCancel?: () => void
 }) {
-  const [remitente, setRemitente] = useState<PersonaForm>({ dni: "", nombres: "", apellidos: "", telefono: "" });
-  const [destinatario, setDestinatario] = useState<PersonaForm>({ dni: "", nombres: "", apellidos: "", telefono: "" });
+  const [remitente, setRemitente] = useState<PersonaForm>({
+    dni: editingEncomienda?.remitente?.dni || "",
+    nombres: editingEncomienda?.remitente?.nombres || "",
+    apellidos: editingEncomienda?.remitente?.apellidos || "",
+    telefono: editingEncomienda?.remitente?.telefono || ""
+  });
+  const [destinatario, setDestinatario] = useState<PersonaForm>({
+    dni: editingEncomienda?.destinatario?.dni || "",
+    nombres: editingEncomienda?.destinatario?.nombres || "",
+    apellidos: editingEncomienda?.destinatario?.apellidos || "",
+    telefono: editingEncomienda?.destinatario?.telefono || ""
+  });
   
   const [paquete, setPaquete] = useState({
-    origen_id: "",
-    destino_id: "",
-    peso_kg: "",
-    precio: "",
-    descripcion: ""
+    origen_id: editingEncomienda?.origen_id?.toString() || "",
+    destino_id: editingEncomienda?.destino_id?.toString() || "",
+    peso_kg: editingEncomienda?.peso_kg?.toString() || "",
+    precio: editingEncomienda?.precio?.toString() || "",
+    descripcion: editingEncomienda?.descripcion || ""
   });
 
   const [isLoadingRemitente, setIsLoadingRemitente] = useState(false);
@@ -65,6 +79,12 @@ export default function RegistroEncomienda({
     setIsSubmitting(true);
     setSuccessMsg("");
 
+    if (remitente.dni.trim() === destinatario.dni.trim()) {
+      alert("El DNI del remitente y del destinatario no pueden ser iguales.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!paquete.origen_id || !paquete.destino_id) {
       alert("Por favor seleccione origen y destino.");
       setIsSubmitting(false);
@@ -72,25 +92,42 @@ export default function RegistroEncomienda({
     }
 
     try {
-      const res = await registrarEncomienda({
-        remitente,
-        destinatario,
-        paquete
-      });
+      if (editingEncomienda) {
+        const res = await editarEncomienda(editingEncomienda.id, {
+          remitente,
+          destinatario,
+          paquete
+        });
 
-      if (res.success) {
-        setSuccessMsg(`¡Encomienda registrada con éxito! Código: ${res.data.codigo_seguimiento}`);
-        // Limpiar form
-        setRemitente({ dni: "", nombres: "", apellidos: "", telefono: "" });
-        setDestinatario({ dni: "", nombres: "", apellidos: "", telefono: "" });
-        setPaquete({ origen_id: "", destino_id: "", peso_kg: "", precio: "", descripcion: "" });
-        
-        // Llamamos al callback después de unos segundos
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
+        if (res.success) {
+          setSuccessMsg(`¡Encomienda editada con éxito!`);
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        } else {
+          alert(res.error || "Error al editar la encomienda");
+        }
       } else {
-        alert(res.error || "Error al registrar la encomienda");
+        const res = await registrarEncomienda({
+          remitente,
+          destinatario,
+          paquete
+        });
+
+        if (res.success) {
+          setSuccessMsg(`¡Encomienda registrada con éxito! Código: ${res.data.codigo_seguimiento}`);
+          // Limpiar form
+          setRemitente({ dni: "", nombres: "", apellidos: "", telefono: "" });
+          setDestinatario({ dni: "", nombres: "", apellidos: "", telefono: "" });
+          setPaquete({ origen_id: "", destino_id: "", peso_kg: "", precio: "", descripcion: "" });
+          
+          // Llamamos al callback después de unos segundos
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        } else {
+          alert(res.error || "Error al registrar la encomienda");
+        }
       }
     } catch (error) {
       alert("Error de conexión");
@@ -244,14 +281,23 @@ export default function RegistroEncomienda({
           </div>
         </div>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end gap-3 pt-4">
+          {onCancel && (
+            <button 
+              type="button" 
+              onClick={onCancel}
+              className="px-6 py-3 border border-gray-200 hover:bg-gray-50 text-gray-650 rounded-xl font-bold transition-all cursor-pointer"
+            >
+              Cancelar
+            </button>
+          )}
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="bg-[#f07639] hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/30 flex items-center"
+            className="bg-[#f07639] hover:bg-orange-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-500/30 flex items-center cursor-pointer"
           >
             {isSubmitting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-            {isSubmitting ? "Registrando..." : "Registrar Encomienda"}
+            {isSubmitting ? (editingEncomienda ? "Guardando..." : "Registrando...") : (editingEncomienda ? "Guardar Cambios" : "Registrar Encomienda")}
           </button>
         </div>
       </form>

@@ -162,7 +162,7 @@ export async function venderPasaje(data: {
           // Al ser venta presencial (admin), el comprador (web) es null
           comprador_id: null,
           precio: data.precio,
-          codigo_qr: `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+          codigo_qr: `QR-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now()}`
         }
       });
 

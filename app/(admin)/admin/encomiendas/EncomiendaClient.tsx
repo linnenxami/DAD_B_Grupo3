@@ -49,6 +49,7 @@ export default function EncomiendaClient({
   
   // Vista actual
   const [view, setView] = useState<"lista" | "registro">("lista");
+  const [editingEncomienda, setEditingEncomienda] = useState<Encomienda | null>(null);
   
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState("");
@@ -164,7 +165,10 @@ export default function EncomiendaClient({
       {userRole === "vendedor" && (
         <div className="bg-white p-1.5 rounded-2xl border border-slate-100 mb-6 flex space-x-1.5">
           <button
-            onClick={() => setView("lista")}
+            onClick={() => {
+              setEditingEncomienda(null);
+              setView("lista");
+            }}
             className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center ${
               view === "lista" ? "bg-gradient-to-r from-[#f07639] to-[#d45a1f] text-white shadow-lg shadow-[#f07639]/15" : "bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700"
             }`}
@@ -172,9 +176,12 @@ export default function EncomiendaClient({
             <Package className="w-4 h-4 mr-2" /> Lista de Encomiendas
           </button>
           <button
-            onClick={() => setView("registro")}
+            onClick={() => {
+              setEditingEncomienda(null);
+              setView("registro");
+            }}
             className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-[13px] transition-all flex items-center justify-center ${
-              view === "registro" ? "bg-gradient-to-r from-[#f07639] to-[#d45a1f] text-white shadow-lg shadow-[#f07639]/15" : "bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+              view === "registro" && !editingEncomienda ? "bg-gradient-to-r from-[#f07639] to-[#d45a1f] text-white shadow-lg shadow-[#f07639]/15" : "bg-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-700"
             }`}
           >
             <PlusCircle className="w-4 h-4 mr-2" /> Registrar Encomienda
@@ -185,9 +192,15 @@ export default function EncomiendaClient({
       {view === "registro" ? (
         <RegistroEncomienda 
           sucursales={sucursales} 
+          editingEncomienda={editingEncomienda}
+          onCancel={() => {
+            setView("lista");
+            setEditingEncomienda(null);
+          }}
           onSuccess={() => {
             refreshList();
             setView("lista");
+            setEditingEncomienda(null);
           }} 
         />
       ) : (
@@ -269,15 +282,29 @@ export default function EncomiendaClient({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {enc.estado !== 'entregado' && (
-                        <button
-                          onClick={() => handleOpenModal(enc)}
-                          className="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4 mr-1.5" />
-                          Actualizar
-                        </button>
-                      )}
+                      <div className="flex justify-end items-center gap-2">
+                        {enc.estado === 'recepcionado' && (
+                          <button
+                            onClick={() => {
+                              setEditingEncomienda(enc);
+                              setView("registro");
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-[#f07639] border border-orange-200/40 text-sm font-bold rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4 mr-1.5" />
+                            Editar
+                          </button>
+                        )}
+                        {enc.estado !== 'entregado' && (
+                          <button
+                            onClick={() => handleOpenModal(enc)}
+                            className="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4 mr-1.5" />
+                            Actualizar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

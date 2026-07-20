@@ -688,7 +688,7 @@ export default function PasajesClient({ initialSucursales, userRole }: { initial
                   </div>
                 </div>
                 
-                <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="p-6 overflow-y-auto flex-1">
                   {viajes.length === 0 && !isLoadingViajes && (
                     <div className="text-center flex flex-col items-center justify-center h-full opacity-60">
                       <Search className="w-16 h-16 text-slate-400 mb-4" />
@@ -777,7 +777,7 @@ export default function PasajesClient({ initialSucursales, userRole }: { initial
                     </div>
                   </div>
                   
-                  <div className="p-4 overflow-y-auto flex-1 flex justify-center items-start bg-slate-50/50 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="p-4 overflow-y-auto flex-1 flex justify-center items-start bg-slate-50/50">
                     {isLoadingAsientos && (
                       <div className="text-center text-slate-400 text-sm mt-20 animate-pulse">Cargando asientos...</div>
                     )}
@@ -936,7 +936,7 @@ export default function PasajesClient({ initialSucursales, userRole }: { initial
                                 </div>
                                 {piso === 1 && (
                                   <div className="text-slate-400 bg-white p-2 rounded-full shadow-sm border border-slate-200">
-                                    <svg className="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg className="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                       <circle cx="12" cy="12" r="10" />
                                       <circle cx="12" cy="12" r="3" />
                                       <path d="M12 15l-3.5 6" />
@@ -949,7 +949,7 @@ export default function PasajesClient({ initialSucursales, userRole }: { initial
                                 )}
                                 {piso === 2 && (
                                   <div className="text-slate-400 bg-white p-2 rounded-full shadow-sm border border-slate-200">
-                                    <svg className="w-5 h-5 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg className="w-5 h-5 opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <path d="M3 21h18M3 17h14M3 13h10M3 9h6M3 5h2" strokeLinecap="round" />
                                     </svg>
                                   </div>
@@ -986,7 +986,7 @@ export default function PasajesClient({ initialSucursales, userRole }: { initial
                     </div>
                   </div>
                   
-                  <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="p-6 overflow-y-auto flex-1">
                     {!selectedAsiento ? (
                       <div className="text-center text-slate-400 text-sm mt-20 flex flex-col items-center opacity-70">
                         <Ticket className="w-12 h-12 text-slate-350 mb-4 animate-bounce" />
