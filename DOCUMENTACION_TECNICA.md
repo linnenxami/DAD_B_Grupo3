@@ -344,7 +344,7 @@ RESEND_API_KEY="re_..."
 RESEND_FROM="El Cumbe <onboarding@resend.dev>"
 
 # API Endpoint Móvil
-EXPO_PUBLIC_API_URL="http://192.168.101.18:3000"
+EXPO_PUBLIC_API_URL="http://10.106.64.71:3000"
 ```
 
 ### Comandos Principales:
