@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTripSeats, marcarAsientosPendientes, liberarAsientos } from "@/app/actions";
+import { verifyMobileToken } from "@/lib/mobileAuth";
 
 export async function GET(req: Request) {
   try {
@@ -24,6 +25,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = verifyMobileToken(req);
+    if (!auth.valid) return auth.response;
+
     const body = await req.json();
     const { seatIds, email, guestToken } = body;
 
@@ -51,6 +55,9 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const auth = verifyMobileToken(req);
+    if (!auth.valid) return auth.response;
+
     const body = await req.json();
     const { seatIds } = body;
 

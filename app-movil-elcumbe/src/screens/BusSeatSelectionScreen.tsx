@@ -95,10 +95,12 @@ export default function BusSeatSelectionScreen({ navigation, route }: Props) {
 
     setLoading(true);
     try {
+      const token = await AsyncStorage.getItem('@auth_token');
       const response = await fetch(`${API_URL}/api/movil/viajes/asientos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           seatIds: selectedSeats.map(s => s.id.toString()),

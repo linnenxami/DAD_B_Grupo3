@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "mobile": "node --env-file=.env app-movil-elcumbe/node_modules/expo/bin/cli start app-movil-elcumbe",
+    "test": "npx tsx scripts/unit-tests.ts && npx tsx scripts/run-tests.ts",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

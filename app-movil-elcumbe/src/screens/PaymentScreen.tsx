@@ -136,11 +136,12 @@ export default function PaymentScreen({ navigation, route }: Props) {
       const tokenId = tokenData.id;
       console.log("Token generado con éxito:", tokenId);
 
-      // 3. Procesar el pago en nuestro Backend
+      const token = await AsyncStorage.getItem('@auth_token');
       const response = await fetch(`${API_URL}/api/movil/compras`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           tokenId,

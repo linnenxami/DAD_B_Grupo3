@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { crearCargoCulqi, procesarPagoMultiplesAsientosCulqi, getClienteProfile } from "@/app/actions";
+import { verifyMobileToken } from "@/lib/mobileAuth";
 
 export async function POST(req: Request) {
   try {
+    const auth = verifyMobileToken(req);
+    if (!auth.valid) return auth.response;
+
     const body = await req.json();
     const { tokenId, viajeId, asientosPasajeros, amount, email, guestToken } = body;
 
@@ -65,6 +69,9 @@ export async function POST(req: Request) {
 // Obtener pasajes/boletos del cliente
 export async function GET(req: Request) {
   try {
+    const auth = verifyMobileToken(req);
+    if (!auth.valid) return auth.response;
+
     const { searchParams } = new URL(req.url);
     const email = searchParams.get("email");
 
