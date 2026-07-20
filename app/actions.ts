@@ -8,6 +8,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCustomerProfileByUserId } from "@/lib/customer-profile";
 import { Resend } from "resend";
+import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -1408,15 +1410,84 @@ export async function liberarAsientos(seatIds: string[], guestToken?: string) {
 }
 export async function enviarTicketEmail(emailDestino: string, tickets: any[], tripDetails: any) {
   try {
-    if (!process.env.RESEND_API_KEY) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
       console.log("No se ha configurado RESEND_API_KEY, no se enviará el correo.");
       return { success: false, error: "Resend no configurado" };
     }
 
-    const { origen, destino, fecha_salida, precio_base } = tripDetails;
-    const dateStr = new Date(fecha_salida).toLocaleDateString();
-    const timeStr = new Date(fecha_salida).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const resend = new Resend(apiKey);
 
+    const origenNombre = tripDetails.ruta?.origen?.nombre || tripDetails.origen?.nombre || tripDetails.origen || "Agencia Origen";
+    const destinoNombre = tripDetails.ruta?.destino?.nombre || tripDetails.destino?.nombre || tripDetails.destino || "Agencia Destino";
+    const fechaSalida = tripDetails.fecha_salida ? new Date(tripDetails.fecha_salida) : new Date();
+
+    const dateStr = fechaSalida.toLocaleDateString("es-PE", { timeZone: "America/Lima" });
+    const timeStr = fechaSalida.toLocaleTimeString("es-PE", { timeZone: "America/Lima", hour: '2-digit', minute: '2-digit' });
+
+    // 1. Generar Documento PDF con jsPDF y Códigos QR
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.setTextColor(240, 118, 57); // #f07639
+    doc.text("EMPRESA DE TRANSPORTES EL CUMBE S.A.C.", 14, 22);
+
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text("BOLETO DIGITAL DE VIAJE - COMPROBANTE DE ABORDAJE", 14, 32);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Fecha de Emisión: ${new Date().toLocaleString("es-PE", { timeZone: "America/Lima" })}`, 14, 40);
+
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 45, 196, 45);
+
+    let yOffset = 55;
+
+    for (const [index, t] of tickets.entries()) {
+      const qrDataUrl = await QRCode.toDataURL(t.codigo_qr || `QR-${t.id}`);
+
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`BOLETO #${index + 1} - DATOS DEL PASAJERO`, 14, yOffset);
+
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Pasajero: ${t.nombres || ''} ${t.apellidos || ''}`, 14, yOffset + 8);
+      doc.text(`DNI / Identificación: ${t.dni || 'N/A'}`, 14, yOffset + 15);
+      doc.text(`Asiento N°: #${t.asiento_viaje_id || t.id}`, 14, yOffset + 22);
+      doc.text(`Código de Abordaje: ${t.codigo_qr || 'N/A'}`, 14, yOffset + 29);
+
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("ITINERARIO DEL VIAJE", 14, yOffset + 42);
+
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Origen: ${origenNombre}`, 14, yOffset + 50);
+      doc.text(`Destino: ${destinoNombre}`, 14, yOffset + 57);
+      doc.text(`Fecha y Hora de Salida: ${dateStr} - ${timeStr}`, 14, yOffset + 64);
+
+      // Renderizar Imagen QR de Abordaje en el PDF
+      doc.addImage(qrDataUrl, "PNG", 130, yOffset, 55, 55);
+
+      yOffset += 78;
+      doc.line(14, yOffset, 196, yOffset);
+      yOffset += 10;
+    }
+
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Por favor, presente este boleto PDF o código QR al embarcar.", 14, yOffset + 5);
+    doc.text("Transportes El Cumbe S.A.C. - Todos los derechos reservados.", 14, yOffset + 11);
+
+    // Convertir PDF a Buffer
+    const pdfArrayBuffer = doc.output("arraybuffer");
+    const pdfBuffer = Buffer.from(pdfArrayBuffer);
+
+    // 2. Construir HTML del correo
     let ticketsHtml = tickets.map(t => `
       <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; background-color: #f9fafb;">
         <p style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold; color: #111827;">Pasajero: ${t.nombres} ${t.apellidos}</p>
@@ -1430,7 +1501,7 @@ export async function enviarTicketEmail(emailDestino: string, tickets: any[], tr
     `).join("");
 
     const html = `
-      <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; color: #374151;">
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #374151;">
         <div style="text-align: center; padding: 24px 0;">
           <h1 style="color: #f07639; margin: 0; font-size: 28px;">El Cumbe</h1>
           <p style="color: #6b7280; margin-top: 8px;">Tu pasaje ha sido confirmado</p>
@@ -1441,17 +1512,21 @@ export async function enviarTicketEmail(emailDestino: string, tickets: any[], tr
           <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
             <tr>
               <td style="padding: 8px 0; color: #6b7280;">Origen:</td>
-              <td style="padding: 8px 0; font-weight: bold; text-align: right;">${origen}</td>
+              <td style="padding: 8px 0; font-weight: bold; text-align: right;">${origenNombre}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280;">Destino:</td>
-              <td style="padding: 8px 0; font-weight: bold; text-align: right;">${destino}</td>
+              <td style="padding: 8px 0; font-weight: bold; text-align: right;">${destinoNombre}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280;">Fecha y Hora:</td>
               <td style="padding: 8px 0; font-weight: bold; text-align: right;">${dateStr} - ${timeStr}</td>
             </tr>
           </table>
+        </div>
+
+        <div style="background-color: #fff7ed; border-left: 4px solid #f07639; padding: 14px; border-radius: 8px; margin-bottom: 24px;">
+          <p style="margin: 0; font-size: 13px; color: #c2410c;">📄 En este correo se encuentra adjunto tu <strong>Boleto Digital de Viaje (PDF)</strong> con tu código QR oficial.</p>
         </div>
 
         <h2 style="font-size: 18px; color: #111827;">Tus Boletos</h2>
@@ -1464,18 +1539,26 @@ export async function enviarTicketEmail(emailDestino: string, tickets: any[], tr
       </div>
     `;
 
+    // 3. Enviar Correo mediante Resend con el PDF adjunto
+    const fromAddress = process.env.RESEND_FROM || 'El Cumbe <onboarding@resend.dev>';
     const data = await resend.emails.send({
-      from: 'El Cumbe <onboarding@resend.dev>', // Resend uses onboarding@resend.dev for free testing
+      from: fromAddress,
       to: [emailDestino],
       subject: '¡Tu pasaje está confirmado! - El Cumbe',
       html: html,
+      attachments: [
+        {
+          filename: 'Boleto_Digital_ElCumbe.pdf',
+          content: pdfBuffer,
+        }
+      ]
     });
 
-    console.log("Correo enviado:", data);
+    console.log("Correo enviado con PDF adjunto exitosamente:", data);
     return { success: true, data };
   } catch (error) {
-    console.error("Error al enviar correo:", error);
-    return { success: false, error: "Error interno al enviar correo" };
+    console.error("Error al enviar correo con PDF:", error);
+    return { success: false, error: "Error al enviar correo de ticket" };
   }
 }
 
