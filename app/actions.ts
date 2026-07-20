@@ -7,9 +7,9 @@ import { z } from "zod";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCustomerProfileByUserId } from "@/lib/customer-profile";
-// import { Resend } from "resend";
+import { Resend } from "resend";
 
-// const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Rate limiting en memoria (Anti-DDoS básico)
 const rateLimits = new Map<string, { count: number; resetTime: number }>();
@@ -1464,16 +1464,12 @@ export async function enviarTicketEmail(emailDestino: string, tickets: any[], tr
       </div>
     `;
 
-    // Funcionalidad de correo temporalmente comentada
-    // const data = await resend.emails.send({
-    //   from: 'El Cumbe <onboarding@resend.dev>', // Resend uses onboarding@resend.dev for free testing
-    //   to: [emailDestino],
-    //   subject: '¡Tu pasaje está confirmado! - El Cumbe',
-    //   html: html,
-    // });
-    
-    // Simular éxito para evitar errores tipográficos y de compilación
-    const data = { id: "correo_simulado" };
+    const data = await resend.emails.send({
+      from: 'El Cumbe <onboarding@resend.dev>', // Resend uses onboarding@resend.dev for free testing
+      to: [emailDestino],
+      subject: '¡Tu pasaje está confirmado! - El Cumbe',
+      html: html,
+    });
 
     console.log("Correo enviado:", data);
     return { success: true, data };
