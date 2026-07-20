@@ -106,7 +106,10 @@ export default function MisBoletosScreen({ navigation }: Props) {
   const loadTickets = async () => {
     setLoadingTickets(true);
     try {
-      const response = await fetch(`${API_URL}/api/movil/compras?email=${user.correo}`);
+      const token = await AsyncStorage.getItem('@auth_token');
+      const response = await fetch(`${API_URL}/api/movil/compras?email=${user.correo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await response.json();
       if (response.ok && data.success) {
         setTickets(data.tickets);
@@ -124,7 +127,10 @@ export default function MisBoletosScreen({ navigation }: Props) {
   const loadEncomiendas = async () => {
     setLoadingEncomiendas(true);
     try {
-      const response = await fetch(`${API_URL}/api/movil/compras?email=${user.correo}`);
+      const token = await AsyncStorage.getItem('@auth_token');
+      const response = await fetch(`${API_URL}/api/movil/compras?email=${user.correo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = await response.json();
       if (response.ok && data.success) {
         setEncomiendas(data.encomiendas || []);
