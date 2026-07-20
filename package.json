@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev -H 0.0.0.0 --turbo",
     "build": "next build",
     "start": "next start",
+    "mobile": "node --env-file=.env app-movil-elcumbe/node_modules/expo/bin/cli start app-movil-elcumbe",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },

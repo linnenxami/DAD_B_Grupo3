@@ -7,12 +7,22 @@ import LoginScreen from './src/screens/LoginScreen';
 import OperadorDashboardScreen from './src/screens/OperadorDashboardScreen';
 import ConductorDashboardScreen from './src/screens/ConductorDashboardScreen';
 import QRScannerScreen from './src/screens/QRScannerScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import ClienteDashboardScreen from './src/screens/ClienteDashboardScreen';
+import BusSeatSelectionScreen from './src/screens/BusSeatSelectionScreen';
+import PassengerFormScreen from './src/screens/PassengerFormScreen';
+import PaymentScreen from './src/screens/PaymentScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   OperadorDashboard: undefined;
   ConductorDashboard: undefined;
   QRScanner: undefined;
+  Register: undefined;
+  ClienteDashboard: undefined;
+  BusSeatSelection: { tripId: string; price: number; busDetails: any };
+  PassengerForm: { tripId: string; selectedSeats: any[]; price: number; guestToken: string };
+  Payment: { tripId: string; asientosPasajeros: any[]; amount: number; guestToken: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -25,13 +35,18 @@ export default function App() {
         initialRouteName="Login"
         screenOptions={{
           headerShown: false,
-          animation: 'fade',
+          animation: 'slide_from_right',
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="OperadorDashboard" component={OperadorDashboardScreen} />
         <Stack.Screen name="ConductorDashboard" component={ConductorDashboardScreen} />
         <Stack.Screen name="QRScanner" component={QRScannerScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ClienteDashboard" component={ClienteDashboardScreen} />
+        <Stack.Screen name="BusSeatSelection" component={BusSeatSelectionScreen} />
+        <Stack.Screen name="PassengerForm" component={PassengerFormScreen} />
+        <Stack.Screen name="Payment" component={PaymentScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

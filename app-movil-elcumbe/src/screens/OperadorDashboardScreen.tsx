@@ -94,6 +94,21 @@ export default function OperadorDashboardScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={24} color="#ffffff" />
         </TouchableOpacity>
 
+        {/* COMPRAR PASAJES VISTA CLIENTE */}
+        <TouchableOpacity 
+          style={[styles.secondaryActionCard, { borderColor: '#f07639', borderWidth: 1 }]}
+          onPress={() => navigation.navigate('ClienteDashboard')}
+        >
+          <View style={[styles.iconWrapper, { backgroundColor: '#fff7ed' }]}>
+            <Ionicons name="cart-outline" size={24} color="#f07639" />
+          </View>
+          <View style={styles.secondaryActionText}>
+            <Text style={[styles.secondaryActionTitle, { color: '#f07639' }]}>Comprar Pasajes</Text>
+            <Text style={styles.secondaryActionSubtitle}>Alternar a la vista de cliente</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#f07639" />
+        </TouchableOpacity>
+
         {/* OTRAS ACCIONES */}
         <TouchableOpacity 
           style={styles.secondaryActionCard}

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -21,6 +22,8 @@ type RootStackParamList = {
   Login: undefined;
   OperadorDashboard: undefined;
   ConductorDashboard: undefined;
+  ClienteDashboard: undefined;
+  Register: undefined;
 };
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -32,6 +35,7 @@ interface Props {
 export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -46,6 +50,8 @@ export default function LoginScreen({ navigation }: Props) {
             navigation.replace('OperadorDashboard');
           } else if (user.rol === 'conductor') {
             navigation.replace('ConductorDashboard');
+          } else if (user.rol === 'cliente') {
+            navigation.replace('ClienteDashboard');
           }
         }
       } catch (e) {
@@ -57,7 +63,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setErrorMsg('Por favor ingresa tu correo y contraseña.');
+      setErrorMsg('Por favor completa todos los campos.');
       return;
     }
 
@@ -83,6 +89,8 @@ export default function LoginScreen({ navigation }: Props) {
           navigation.replace('OperadorDashboard');
         } else if (data.user.rol === 'conductor') {
           navigation.replace('ConductorDashboard');
+        } else if (data.user.rol === 'cliente') {
+          navigation.replace('ClienteDashboard');
         } else {
           setErrorMsg('Rol no soportado por esta aplicación.');
         }
@@ -119,7 +127,7 @@ export default function LoginScreen({ navigation }: Props) {
             />
             
             <Text style={styles.title}>Inicia Sesión</Text>
-            <Text style={styles.subtitle}>Portal Operativo El Cumbe</Text>
+            <Text style={styles.subtitle}>Portal El Cumbe</Text>
 
             {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
@@ -133,14 +141,27 @@ export default function LoginScreen({ navigation }: Props) {
               autoCapitalize="none"
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              placeholderTextColor="#94a3b8"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                placeholder="Contraseña"
+                placeholderTextColor="#94a3b8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={20}
+                  color="#64748b"
+                />
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.loginButton}
@@ -152,6 +173,15 @@ export default function LoginScreen({ navigation }: Props) {
               ) : (
                 <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={{ marginTop: 20 }} 
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Text style={{ color: '#f07639', fontWeight: '600', fontSize: 14 }}>
+                ¿No tienes cuenta? Regístrate aquí
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -175,57 +205,74 @@ const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 0,
-    bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)', // Oscurecer el banner un poco
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
   },
   formContainer: {
     flex: 1,
-    paddingHorizontal: 24,
-    marginTop: -40, // Superponer el formulario sobre el banner
+    marginTop: -50,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: '#f8fafc',
+    overflow: 'hidden',
   },
   loginBox: {
     backgroundColor: '#ffffff',
-    padding: 32,
+    margin: 24,
     borderRadius: 24,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 8,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 40,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 16,
+    elevation: 4,
   },
   logoImage: {
-    width: 150,
-    height: 70,
-    marginBottom: 20,
+    width: 120,
+    height: 50,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0f172a',
-    textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     fontWeight: '500',
   },
   input: {
     width: '100%',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
     color: '#334155',
+    marginBottom: 16,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 14,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 36,
   },
   loginButton: {
     width: '100%',
@@ -246,17 +293,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    width: '100%',
     color: '#ef4444',
     backgroundColor: '#fef2f2',
     borderColor: '#fca5a5',
     borderWidth: 1,
     padding: 12,
     borderRadius: 10,
+    width: '100%',
     marginBottom: 20,
     textAlign: 'center',
-    overflow: 'hidden',
     fontWeight: '500',
     fontSize: 14,
-  }
+  },
 });
